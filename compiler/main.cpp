@@ -79,6 +79,7 @@
 #include "timing.hh"
 #include "constant_folding.hh"
 #include "ppsig.hh"
+#include "prepare_delaylines.hh"
 
 using namespace std ;
 
@@ -622,6 +623,7 @@ static Tree prepareSignals(Tree lsignals)
     assert(sigIsTyped(simplified));
 
     recursivnessAnnotation(simplified);      // re-annotate simplified signal tree with recursivness information
+    delaylineAnnotation(simplified);         // annotate delay lines with their required size
 
     assert(sigIsAnnotated(simplified, RECURSIVNESS));
 
