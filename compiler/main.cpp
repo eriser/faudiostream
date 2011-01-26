@@ -616,6 +616,7 @@ static Tree prepareSignals(Tree lsignals)
     typeAnnotation(privatized);              // Annotate signal tree with type information
     endTiming("typeAnnotation");
 
+    assert(sigIsTyped(privatized));
     Tree simplified = simplify(privatized);   // simplify by executing every computable operation
 
     assert(sigIsTyped(simplified));

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
+#include "ensure.hh"
 #include "tlib.hh"
 #include "signals.hh"
 #include "sigprint.hh"
@@ -70,27 +71,29 @@ Tree normalizeDelay1Term(Tree s)
  * Compute the normal form of a fixed delay term (s@d).
  * The normalisation rules are :
  *		s@0 -> s
- *     	0@d -> 0
+ *     	N@d -> N, if N is a number
  *     	(k*s)@d -> k*(s@d)
  *		(s/k)@d -> (s@d)/k
  * 		(s@n)@m -> s@(n+m)
  * Note that the same rules can't be applied to
  * + et - becaue the value of the first d samples
  * would be wrong. We could also add delays such that
- * \param s the term to be delayed
+ * \param delayline used delayline
  * \param d the value of the delay
  * \return the normalized term
  */
 
-Tree normalizeFixedDelayTerm(Tree s, Tree d)
+Tree normalizeFixedDelayTerm(Tree delayline, Tree d)
 {
-	Tree x, y, r;
+	Tree s, x, y, r;
 	int i;
+
+    ensure(isSigDelayLine(delayline, s));
 
 	if (isZero(d) && ! isProj(s, &i, r))
         return s;
 
-	if (isZero(s))
+	if (isNum(s))
         return s;
 
 	if (isSigMul(s, x, y)) {
@@ -117,7 +120,9 @@ Tree normalizeFixedDelayTerm(Tree s, Tree d)
 	}
 
     Tree ret = sigFixDelay(s, d);
-    ret->setType(sampCast(s->getType()));
+    Type delayType = sampCast(s->getType());
+    ret->setType(delayType);
+    ret->branch(0)->setType(delayType);
 
     /* sigFixDelay introduces a cast node. we need to ensure the type */
     Tree sNormalized = NULL, dNormalized = NULL;

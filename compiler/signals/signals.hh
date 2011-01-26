@@ -64,6 +64,8 @@ bool  isSigDelay1(Tree t, Tree& t0);
 Tree  sigFixDelay(Tree t0, Tree t1, Tree box = unknown_box);
 bool  isSigFixDelay(Tree t, Tree& t0, Tree& t1);
 
+bool  isSigDelayLine(Tree t, Tree& t0);
+
 Tree  sigPrefix(Tree t0, Tree t1, Tree box);
 bool  isSigPrefix(Tree t, Tree& t0, Tree& t1);
 

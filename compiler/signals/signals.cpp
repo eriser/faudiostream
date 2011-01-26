@@ -58,8 +58,16 @@ Tree  sigDelay0(Tree t0, Tree box)					{ return sigFixDelay(t0, sigInt(0, box), 
 Tree  sigDelay1(Tree t0, Tree box)					{ return tree(SIGDELAY1, t0)->setProperty(box_symbol, box); 		}
 bool  isSigDelay1(Tree t, Tree& t0)					{ return isTree(t, SIGDELAY1, t0); 	}
 
+Sym SIGDELAYLINE = symbol ("sigDelayLine");
+static Tree sigDelayLine(Tree t0)
+{
+    return tree(SIGDELAYLINE, t0);
+}
+
+bool  isSigDelayLine(Tree t, Tree& t0)              { return isTree(t, SIGDELAYLINE, t0);  }
+
 Sym SIGFIXDELAY = symbol ("sigFixDelay");
-Tree  sigFixDelay(Tree t0, Tree t1, Tree box)		{ return tree(SIGFIXDELAY, t0, sigIntCast(t1, box))->setProperty(box_symbol, box); 		}
+Tree  sigFixDelay(Tree t0, Tree t1, Tree box)		{ return tree(SIGFIXDELAY, sigDelayLine(t0), sigIntCast(t1, box))->setProperty(box_symbol, box); 		}
 bool  isSigFixDelay(Tree t, Tree& t0, Tree& t1)		{ return isTree(t, SIGFIXDELAY, t0, t1); 	}
 
 Sym SIGPREFIX = symbol ("sigPrefix");

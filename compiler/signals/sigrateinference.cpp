@@ -288,6 +288,7 @@ RateMap doInferRateDispatch(Tree sig)
     else if (isSigDelay1(sig, s1))                      return propagateRate(s1);
     else if (isSigPrefix(sig, s1, s2))                  return propagateRate(s1);
     else if (isSigFixDelay(sig, s1, s2))                return propagateRate(s1, s2);
+    else if (isSigDelayLine(sig, s1))                   return propagateRate(s1);
     else if (isSigBinOp(sig, &i, s1, s2))               return propagateRate(s1, s2);
     else if (isSigIntCast(sig, s1))                     return propagateRate(s1);
     else if (isSigFloatCast(sig, s1))                   return propagateRate(s1);

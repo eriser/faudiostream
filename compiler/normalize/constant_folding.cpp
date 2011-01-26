@@ -23,6 +23,7 @@
 #include "list.hh"
 #include "xtended.hh"
 #include "constant_folding.hh"
+#include "ensure.hh"
 #include <stdexcept>
 
 
@@ -63,14 +64,16 @@ static Tree doConstantFolding (Tree sig)
 
 
     } else if (isSigFixDelay(sig, t1, t2)) {
-        Tree r;
+        Tree delayedSignal, r;
         int i;
 
-        if (isZero(t2) && !isProj(t1, &i, r))
-            return t1;
+        ensure(isSigDelayLine(t1, delayedSignal));
 
-        if (isZero(t1))
-            return t1;
+        if (isZero(t2) && !isProj(t1, &i, r))
+            return delayedSignal;
+
+        if (isNum(delayedSignal))
+            return delayedSignal;
 
     } else if (isSigIntCast(sig, t1)) {
         Tree    tx;

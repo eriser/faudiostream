@@ -196,6 +196,7 @@ ostream& ppsig::print (ostream& fout) const
 
 	else if ( isSigDelay1(sig, x) ) 				{ fout << ppsig(x, fEnv, 9) << "'"; }
 	//else if ( isSigFixDelay(sig, x, y) ) 			{ printinfix(fout, "@", 8, x, y); 	}
+    else if ( isSigDelayLine(sig, x) )              { printfun(fout, "delayline", x);   }
 	else if ( isSigFixDelay(sig, x, y) ) 			{ printFixDelay(fout, x, y); 	}
 	else if ( isSigPrefix(sig, x, y) ) 				{ printfun(fout, "prefix", x, y); }
 	else if ( isSigIota(sig, x) ) 					{ printfun(fout, "iota", x); }
@@ -230,7 +231,7 @@ ostream& ppsig::print (ostream& fout) const
 
 	else if ( isSigVectorize(sig, x, y) ) 			{ printfun(fout, "vectorize", x, y); }
 	else if ( isSigSerialize(sig, x) ) 				{ printfun(fout, "serialize", x); }
-	
+
 
 	else {
         cerr << "NOT A SIGNAL : " << *sig << endl;
