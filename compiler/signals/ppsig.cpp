@@ -26,6 +26,7 @@
 #include "prim2.hh"
 #include "xtended.hh"
 #include "recursivness.hh"
+#include "prepare_delaylines.hh"
 
 ostream& ppsig::printinfix (ostream& fout, const string& opname, int priority, Tree x, Tree y) const
 {
@@ -140,6 +141,17 @@ ostream& ppsig::printFixDelay (ostream& fout, Tree exp, Tree delay) const
 	return fout;
 }
 
+ostream& ppsig::printDelayLine (ostream& fout, Tree delayLine, Tree exp) const
+{
+    fout << "Delayline";
+    int size = getMaxDelay(delayLine);
+    if (size != -1)
+        fout << "[size=" << size << "]";
+
+    fout << '(' << ppsig(exp, fEnv) << ')';
+    return fout;
+}
+
 //	else if ( isSigFixDelay(sig, x, y) ) 			{ printinfix(fout, "@", 8, x, y); 	}
 
 ostream& ppsig::printrec (ostream& fout, Tree var, Tree lexp, bool hide) const
@@ -196,7 +208,7 @@ ostream& ppsig::print (ostream& fout) const
 
 	else if ( isSigDelay1(sig, x) ) 				{ fout << ppsig(x, fEnv, 9) << "'"; }
 	//else if ( isSigFixDelay(sig, x, y) ) 			{ printinfix(fout, "@", 8, x, y); 	}
-    else if ( isSigDelayLine(sig, x) )              { printfun(fout, "delayline", x);   }
+    else if ( isSigDelayLine(sig, x) )              { printDelayLine(fout, sig, x);   }
 	else if ( isSigFixDelay(sig, x, y) ) 			{ printFixDelay(fout, x, y); 	}
 	else if ( isSigPrefix(sig, x, y) ) 				{ printfun(fout, "prefix", x, y); }
 	else if ( isSigIota(sig, x) ) 					{ printfun(fout, "iota", x); }

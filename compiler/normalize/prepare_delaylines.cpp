@@ -32,7 +32,11 @@ int getMaxDelay(Tree delayline)
     Tree dummy;
     assert(isSigDelayLine(delayline, dummy));
 
-    return tree2int(delayline->getProperty(maxDelayKey));
+    Tree delProp = delayline->getProperty(maxDelayKey);
+    if (!delProp)
+        return -1;
+    else
+        return tree2int(delProp);
 }
 
 
