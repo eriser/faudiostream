@@ -797,6 +797,8 @@ struct DeclareVarInst : public StatementInst
     DeclareVarInst(Address* address, Typed* typed, ValueInst* value)
         :fAddress(address), fTyped(typed), fValue(value)
     {
+        assert(value ? dynamic_cast<NullInst*>(value) == 0 : true);
+
         if (gVarTable.find(fAddress->getName()) == gVarTable.end()) {
             gVarTable[fAddress->getName()] = typed;
         }
@@ -873,7 +875,9 @@ struct StoreVarInst : public StatementInst
 
     StoreVarInst(Address* address, ValueInst* value)
         :fAddress(address), fValue(value)
-    {}
+    {
+        assert(dynamic_cast<NullInst*>(value) == 0);
+    }
 
     void accept(InstVisitor* visitor) { visitor->visit(this); }
 
