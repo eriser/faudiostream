@@ -69,7 +69,7 @@ static Tree doConstantFolding (Tree sig)
 
         ensure(isSigDelayLine(t1, delayedSignal));
 
-        if (isZero(t2) && !isProj(t1, &i, r))
+        if (isZero(t2) && !isProj(delayedSignal, &i, r))
             return delayedSignal;
 
         if (isNum(delayedSignal))
