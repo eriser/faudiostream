@@ -59,7 +59,7 @@ Tree  sigDelay1(Tree t0, Tree box)					{ return tree(SIGDELAY1, t0)->setProperty
 bool  isSigDelay1(Tree t, Tree& t0)					{ return isTree(t, SIGDELAY1, t0); 	}
 
 Sym SIGDELAYLINE = symbol ("sigDelayLine");
-static Tree sigDelayLine(Tree t0)
+Tree sigDelayLine(Tree t0)
 {
     return tree(SIGDELAYLINE, t0);
 }

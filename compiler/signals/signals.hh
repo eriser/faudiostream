@@ -218,6 +218,8 @@ inline bool isNum(const Tree& t, num& n)
 	return false;
 }
 
+Tree sigDelayLine(Tree t0);
+
 
 /*****************************************************************************
 							 User Interface Elements

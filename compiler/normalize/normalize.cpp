@@ -98,17 +98,17 @@ Tree normalizeFixedDelayTerm(Tree delayline, Tree d)
 
 	if (isSigMul(s, x, y)) {
 		if (getSigOrder(x) < 2) {
-            Tree normDel = normalizeFixedDelayTerm(y,d);
+            Tree normDel = normalizeFixedDelayTerm(sigDelayLine(y), d);
             return simplifyingMul(x, normDel);
 		} else if (getSigOrder(y) < 2) {
-            Tree normDel = normalizeFixedDelayTerm(x,d);
+            Tree normDel = normalizeFixedDelayTerm(sigDelayLine(x), d);
             return simplifyingMul(y, normDel);
 		}
 
 	} else if (isSigDiv(s, x, y)) {
 
 		if (getSigOrder(y) < 2) {
-            Tree normDel = normalizeFixedDelayTerm(x,d);
+            Tree normDel = normalizeFixedDelayTerm(sigDelayLine(x), d);
             return simplifyingDiv(normDel, y);
 		}
 
