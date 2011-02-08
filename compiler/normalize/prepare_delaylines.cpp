@@ -23,22 +23,35 @@
 #include "symbol.hh"
 #include "signals.hh"
 #include "sigtyperules.hh"
+#include <limits>
 
 static Sym maxDelayProperty = symbol("maxDelayProperty");
 static Tree maxDelayKey = tree(maxDelayProperty);
 
-int getMaxDelay(Tree delayline)
+static Sym minDelayProperty = symbol("minDelayProperty");
+static Tree minDelayKey = tree(minDelayProperty);
+
+static int getDelaylineProperty(Tree delayline, Tree property)
 {
     Tree dummy;
     assert(isSigDelayLine(delayline, dummy));
 
-    Tree delProp = delayline->getProperty(maxDelayKey);
+    Tree delProp = delayline->getProperty(property);
     if (!delProp)
         return -1;
     else
         return tree2int(delProp);
 }
 
+int getMaxDelay(Tree delayline)
+{
+    return getDelaylineProperty(delayline, maxDelayKey);
+}
+
+int getMinDelay(Tree delayline)
+{
+    return getDelaylineProperty(delayline, minDelayKey);
+}
 
 static void updateMaxDelayProperty(Tree sig, int newMax)
 {
@@ -52,17 +65,32 @@ static void updateMaxDelayProperty(Tree sig, int newMax)
         sig->setProperty(maxDelayKey, tree(newMax));
 }
 
+static void updateMinDelayProperty(Tree sig, int newMin)
+{
+    int currentMinDelay = std::numeric_limits<int>::max();
+
+    Tree currentProperty = sig->getProperty(minDelayKey);
+    if (currentProperty)
+        currentMinDelay = tree2int(currentProperty);
+
+    if (newMin < currentMinDelay)
+        sig->setProperty(minDelayKey, tree(newMin));
+}
+
 static void mappingFunction(Tree sig)
 {
     Tree delayline, size;
     if (isSigFixDelay(sig, delayline, size)) {
-        int iSize;
-        if (isNum(size))
-            iSize = tree2int(size);
-        else {
-            iSize = ceil(getSigType(size)->getInterval().hi);
+        if (isNum(size)) {
+            int iSize = tree2int(size);
+            updateMinDelayProperty(delayline, iSize);
+            updateMaxDelayProperty(delayline, iSize);
+        } else {
+            int iSizeMin = ceil(getSigType(size)->getInterval().lo);
+            int iSizeMax = ceil(getSigType(size)->getInterval().hi);
+            updateMaxDelayProperty(delayline, iSizeMin);
+            updateMaxDelayProperty(delayline, iSizeMax);
         }
-        updateMaxDelayProperty(delayline, iSize);
     }
 }
 

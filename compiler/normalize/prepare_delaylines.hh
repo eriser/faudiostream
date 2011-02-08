@@ -29,5 +29,6 @@
 void delaylineAnnotation (Tree root);
 
 int getMaxDelay(Tree delayline);
+int getMinDelay(Tree delayline);
 
 #endif
