@@ -41,6 +41,7 @@
 #include "occurences.hh"
 #include "property.hh"
 #include "Text.hh"
+#include "instructions_compiler_base.hh"
 
 using namespace std;
 
@@ -48,35 +49,12 @@ extern string gMasterName;
 
 typedef ValueInst* InstType;
 
-class InstructionsCompiler {
-
+class InstructionsCompiler:
+    public InstructionsCompilerBase
+{
     protected:
-
-        CodeContainer* fContainer;
-
-        property<ValueInst*> fCompileProperty;
-        property<string> fVectorProperty;
-        property<pair<string, string> > fStaticInitProperty;
-        property<pair<string,string> > fInstanceInitProperty;
-        property<string> fTableProperty;
-        static map<string, int>	fIDCounters;
-        Tree fSharingKey;
-        OccMarkup fOccMarkup;
-
         Tree fUIRoot;
-        Description* fDescription;
         bool fLoadedIota;
-
-        void getTypedNames(::Type t, const string& prefix, Typed::VarType& ctype, string& vname);
-
-        bool getCompiledExpression(Tree sig, InstType& cexp);
-        InstType setCompiledExpression(Tree sig, const InstType& cexp);
-
-        void setVectorNameProperty(Tree sig, const string& vecname);
-        bool getVectorNameProperty(Tree sig, string& vecname);
-
-        void setTableNameProperty(Tree sig, const string& vecname);
-        bool getTableNameProperty(Tree sig, string& vecname);
 
         StatementInst* generateInitArray(const string& vname, Typed::VarType ctype, int delay);
         StatementInst* generateCopyArray(const string& vname, int index_from, int index_to);
@@ -87,52 +65,16 @@ class InstructionsCompiler {
         ValueInst* generateSliderAux(Tree sig, Tree path, Tree cur, Tree min, Tree max, Tree step, const string& name);
         ValueInst* generateBargraphAux(Tree sig, Tree path, Tree min, Tree max, ValueInst* exp, const string& name);
 
-
-        /* wrapper functions to access code container */
-        StatementInst* pushInitMethod(StatementInst* inst)              { return fContainer->pushInitMethod(inst); }
-        StatementInst* pushPostInitMethod(StatementInst* inst)          { return fContainer->pushPostInitMethod(inst); }
-        StatementInst* pushFrontInitMethod(StatementInst* inst)         { return fContainer->pushFrontInitMethod(inst); }
-        StatementInst* pushDestroyMethod(StatementInst* inst)           { return fContainer->pushDestroyMethod(inst); }
-        StatementInst* pushStaticInitMethod(StatementInst* inst)        { return fContainer->pushStaticInitMethod(inst); }
-        StatementInst* pushPostStaticInitMethod(StatementInst* inst)    { return fContainer->pushPostStaticInitMethod(inst); }
-        StatementInst* pushComputeBlockMethod(StatementInst* inst)      { return fContainer->pushComputeBlockMethod(inst); }
-        StatementInst* pushUserInterfaceMethod(StatementInst* inst)     { return fContainer->pushUserInterfaceMethod(inst); }
-
-        StatementInst* pushDeclare(StatementInst* inst)                 { return fContainer->pushDeclare(inst); }
-        StatementInst* pushGlobalDeclare(StatementInst* inst)           { return fContainer->pushGlobalDeclare(inst); }
-        StatementInst* pushExtGlobalDeclare(StatementInst* inst)        { return fContainer->pushExtGlobalDeclare(inst); }
-
-        StatementInst* pushComputePreDSPMethod(StatementInst* inst)     { return fContainer->pushComputePreDSPMethod(inst); }
-        StatementInst* pushComputeDSPMethod(StatementInst* inst)        { return fContainer->pushComputeDSPMethod(inst); }
-        StatementInst* pushComputePostDSPMethod(StatementInst* inst)    { return fContainer->pushComputePostDSPMethod(inst); }
-
         void ensureIotaCode();
 
-        int pow2limit(int x)
-        {
-            int n = 2;
-            while (n < x) { n = 2*n; }
-            return n;
-        }
-
         CodeContainer* signal2Container(const string& name, Tree sig);
-
-        string getFreshID(const string& prefix);
-        int getSharingCount(Tree sig);
-        void setSharingCount(Tree sig, int count);
-        void sharingAnalysis(Tree t);
-        void sharingAnnotation(int vctxt, Tree sig);
-        Tree prepare(Tree LS);
-        Tree prepare2(Tree L0);
 
     public:
 
         InstructionsCompiler(CodeContainer* container)
-            :fContainer(container), fUIRoot(uiFolder(cons(tree(0),
-            tree(subst("$0", gMasterName))))), fDescription(0),
+            :InstructionsCompilerBase(container), fUIRoot(uiFolder(cons(tree(0),
+            tree(subst("$0", gMasterName))))),
             fLoadedIota(false)
-        {}
-        virtual ~InstructionsCompiler()
         {}
 
         virtual ValueInst* CS(Tree sig);
@@ -199,10 +141,6 @@ class InstructionsCompiler {
         void generateMacroInterfaceTree(const string& pathname, Tree t);
         void generateMacroInterfaceElements(const string& pathname, Tree elements);
         void generateWidgetMacro(const string& pathname, Tree fulllabel, Tree varname, Tree sig);
-
-        void setDescription(Description* descr)	{ fDescription= descr; }
-        Description* getDescription() { return fDescription; }
-
 };
 
 
