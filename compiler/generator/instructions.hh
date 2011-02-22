@@ -100,6 +100,8 @@ struct VectorTyped;
 
 struct NamedAddress;
 struct IndexedAddress;
+struct CastAddress;
+struct VectorAddress;
 
 // Globals
 extern map<string, Typed*> gVarTable;
@@ -197,6 +199,8 @@ class CloneVisitor {
         // Addresses
         virtual Address* visit(NamedAddress* address) = 0;
         virtual Address* visit(IndexedAddress* address) = 0;
+        virtual Address* visit(VectorAddress* address) = 0;
+        virtual Address* visit(CastAddress* address) = 0;
 
         // Primitives : numbers
         virtual ValueInst* visit(FloatNumInst* inst) = 0;
@@ -604,7 +608,6 @@ struct NamedAddress : public Address {
     string getName() {return fName; }
 
     Address* clone(CloneVisitor* cloner) { return cloner->visit(this); }
-
     void accept(InstVisitor* visitor) { visitor->visit(this); }
 };
 
@@ -624,9 +627,48 @@ struct IndexedAddress : public Address {
     string getName() {return fAddress->getName(); }
 
     Address* clone(CloneVisitor* cloner) { return cloner->visit(this); }
-
     void accept(InstVisitor* visitor) { visitor->visit(this); }
 };
+
+struct VectorAddress: public Address
+{
+    string fName;
+    Typed * fType;
+    int fSize;
+    AccessType fAccess;
+
+    VectorAddress (string const & name, Typed * type, int size, Address::AccessType ):
+        fName(name), fType(type), fSize(size)
+    {}
+
+    void setAccess(Address::AccessType type) { fAccess = type; }
+    Address::AccessType getAccess() { return fAccess; }
+
+    void setName(const string& name) { fName = name; }
+    string getName() {return fName; }
+
+    Address* clone(CloneVisitor* cloner) { return cloner->visit(this); }
+    void accept(InstVisitor* visitor) { visitor->visit(this); }
+};
+
+struct CastAddress: public Address
+{
+    Address * fAddress;
+    Typed * fType;
+
+    CastAddress (Address * address, Typed * type):
+        fAddress(address), fType(type)
+    {}
+    void setAccess(Address::AccessType type) { fAddress->setAccess(type); }
+    Address::AccessType getAccess() { return fAddress->getAccess(); }
+
+    void setName(const string& name) { fAddress->setName(name); }
+    string getName() {return fAddress->getName(); }
+
+    Address* clone(CloneVisitor* cloner) { return cloner->visit(this); }
+    void accept(InstVisitor* visitor) { visitor->visit(this); }
+};
+
 
 // ===============
 // User interface
@@ -1168,6 +1210,8 @@ class BasicCloneVisitor : public CloneVisitor {
         // Addresses
         virtual Address* visit(NamedAddress* address) { return new NamedAddress(address->fName, address->fAccess); }
         virtual Address* visit(IndexedAddress* address) { return new IndexedAddress(address->fAddress->clone(this), address->fIndex->clone(this)); }
+        virtual Address* visit(VectorAddress* address) { return new VectorAddress(address->fName, address->fType->clone(this), address->fSize, address->fAccess); }
+        virtual Address* visit(CastAddress* address) { return new CastAddress(address->fAddress->clone(this), address->fType->clone(this)); }
 
         // Primitives : numbers and string
         virtual ValueInst* visit(FloatNumInst* inst) { return new FloatNumInst(inst->fNum, inst->fSize); }
