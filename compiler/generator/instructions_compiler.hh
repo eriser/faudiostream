@@ -45,15 +45,12 @@
 
 using namespace std;
 
-extern string gMasterName;
-
 typedef ValueInst* InstType;
 
 class InstructionsCompiler:
     public InstructionsCompilerBase
 {
     protected:
-        Tree fUIRoot;
         bool fLoadedIota;
 
         StatementInst* generateInitArray(const string& vname, Typed::VarType ctype, int delay);
@@ -72,8 +69,7 @@ class InstructionsCompiler:
     public:
 
         InstructionsCompiler(CodeContainer* container)
-            :InstructionsCompilerBase(container), fUIRoot(uiFolder(cons(tree(0),
-            tree(subst("$0", gMasterName))))),
+            :InstructionsCompilerBase(container),
             fLoadedIota(false)
         {}
 
@@ -130,17 +126,6 @@ class InstructionsCompiler:
 
         virtual ValueInst* generateDelayVec(Tree sig, ValueInst* exp, Typed::VarType ctype, const string& vname, int mxd);
         virtual ValueInst* generateDelayLine(ValueInst* exp, Typed::VarType ctype, const string& vname, int mxd, Address::AccessType& var_access);
-
-        // Gestion de la description arborescente de l'IU
-        void addUIWidget(Tree path, Tree widget);
-        Tree prepareUserInterfaceTree(Tree t);
-        void generateUserInterfaceTree(Tree t);
-        void generateUserInterfaceElements(Tree elements);
-        void generateWidgetCode(Tree fulllabel, Tree varname, Tree sig);
-
-        void generateMacroInterfaceTree(const string& pathname, Tree t);
-        void generateMacroInterfaceElements(const string& pathname, Tree elements);
-        void generateWidgetMacro(const string& pathname, Tree fulllabel, Tree varname, Tree sig);
 };
 
 

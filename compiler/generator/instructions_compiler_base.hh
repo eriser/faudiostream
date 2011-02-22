@@ -35,6 +35,7 @@
 #include "Text.hh"
 
 using namespace std;
+extern string gMasterName;
 
 /* base class of an instructions compiler:
  * - provides a code container
@@ -42,6 +43,7 @@ using namespace std;
  * - provides compiler-specific properties
  * - maintains identifies generation
  * - maintains Description
+ * - gui
  *
  */
 class InstructionsCompilerBase {
@@ -49,6 +51,7 @@ class InstructionsCompilerBase {
 
 protected:
     CodeContainer* fContainer;
+    Tree fUIRoot;
 
     property<ValueInst*> fCompileProperty;
     property<string> fVectorProperty;
@@ -106,13 +109,27 @@ protected:
     Tree prepare2(Tree L0);
 
     InstructionsCompilerBase(CodeContainer* container)
-        :fContainer(container), fDescription(0)
+        :fContainer(container), fUIRoot(uiFolder(cons(tree(0),
+            tree(subst("$0", gMasterName))))), fDescription(0)
     {}
 
     virtual ~InstructionsCompilerBase()
     {}
 
+    // Gestion de la description arborescente de l'IU
+    void addUIWidget(Tree path, Tree widget);
+    Tree prepareUserInterfaceTree(Tree t);
+    void generateUserInterfaceTree(Tree t);
+    void generateUserInterfaceElements(Tree elements);
+    void generateWidgetCode(Tree fulllabel, Tree varname, Tree sig);
+
+    void generateMacroInterfaceTree(const string& pathname, Tree t);
+    void generateMacroInterfaceElements(const string& pathname, Tree elements);
+    void generateWidgetMacro(const string& pathname, Tree fulllabel, Tree varname, Tree sig);
+
 public:
+    virtual void compileMultiSignal(Tree rootSignal) = 0;
+
     void setDescription(Description* descr) { fDescription= descr; }
     Description* getDescription() { return fDescription; }
 };
