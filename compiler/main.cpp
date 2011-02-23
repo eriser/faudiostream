@@ -63,6 +63,8 @@
 
 #include "instructions_compiler.hh"
 #include "dag_instructions_compiler.hh"
+#include "multirate_instructions_compiler.hh"
+
 #include "c_code_container.hh"
 #include "cpp_code_container.hh"
 #include "cpp_gpu_code_container.hh"
@@ -630,12 +632,12 @@ static Tree prepareSignals(Tree lsignals)
     return simplified;
 }
 
-static pair<InstructionsCompiler*, CodeContainer*> generateCode(Tree signals, int numInputs, int numOutputs)
+static pair<InstructionsCompilerBase*, CodeContainer*> generateCode(Tree signals, int numInputs, int numOutputs)
 {
     // By default use "cpp" output
     if (gOutputLang == "") gOutputLang = "cpp";
 
-    InstructionsCompiler* comp;
+    InstructionsCompilerBase * comp;
     CodeContainer* container = NULL;
 
     startTiming("compilation");
@@ -696,11 +698,13 @@ static pair<InstructionsCompiler*, CodeContainer*> generateCode(Tree signals, in
              cerr << "ERROR : cannot find compiler for " << "\"" << gOutputLang  << "\"" << endl;
              exit(1);
         }
-        if (gVectorSwitch) {
-            comp = new DAGInstructionsCompiler(container);
-        } else {
-            comp = new InstructionsCompiler(container);
-        }
+
+        comp = new MultirateInstructionsCompiler(container);
+//         if (gVectorSwitch) {
+//             comp = new DAGInstructionsCompiler(container);
+//         } else {
+//             comp = new InstructionsCompiler(container);
+//         }
 
         if (gPrintXMLSwitch) comp->setDescription(new Description());
         if (gPrintDocSwitch) comp->setDescription(new Description());
@@ -746,7 +750,7 @@ static pair<InstructionsCompiler*, CodeContainer*> generateCode(Tree signals, in
     return make_pair(comp, container);
 }
 
-static void generateOutputFiles(InstructionsCompiler * comp, CodeContainer * container)
+static void generateOutputFiles(InstructionsCompilerBase * comp, CodeContainer * container)
 {
     /****************************************************************
      1 - generate XML description (if required)
@@ -848,7 +852,7 @@ int main (int argc, char* argv[])
 	/****************************************************************
 	 6 - translate output signals into C, C++, JAVA or LLVM code
 	*****************************************************************/
-    pair<InstructionsCompiler*, CodeContainer*> comp_container = generateCode(signals, numInputs, numOutputs);
+    pair<InstructionsCompilerBase*, CodeContainer*> comp_container = generateCode(signals, numInputs, numOutputs);
 
     /****************************************************************
      7 - generate xml description, documentation or dot files
