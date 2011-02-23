@@ -177,6 +177,11 @@ class CodeContainer {
         DeclareFunInst* generateGetInputRate(const string& name, bool isvirtual);
         DeclareFunInst* generateGetOutputRate(const string& name, bool isvirtual);
 
+        LoadVarInst * loadFullCount(void)
+        {
+            return InstBuilder::genLoadStackVar(fFullCount);
+        }
+
         void generateDAGLoop(BlockInst* loop_code, DeclareVarInst* count);
 
         /* can be overridden by subclasses to reorder the FIR before the actual code generation */
