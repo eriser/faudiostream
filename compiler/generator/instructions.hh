@@ -1970,8 +1970,15 @@ struct InstBuilder
         return genBinopInst(kSub, a1, a2);
     }
 
-    static BinopInst* genMul(ValueInst* a1, ValueInst* a2)
+    static ValueInst* genMul(ValueInst* a1, ValueInst* a2)
     {
+        IntNumInst * one;
+        if ((one = dynamic_cast<IntNumInst*>(a1)))
+            return a2;
+
+        if ((one = dynamic_cast<IntNumInst*>(a2)))
+            return a1;
+
         return genBinopInst(kMul, a1, a2);
     }
 
