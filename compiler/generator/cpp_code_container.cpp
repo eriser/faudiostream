@@ -56,6 +56,9 @@ CodeContainer* CPPCodeContainer::createScalarContainer(const string& name, int s
 
 CodeContainer* CPPCodeContainer::createContainer(int numInputs, int numOutputs, ostream* dst)
 {
+    // FIXME: hack to enable new compiler
+    return new CPPMRCodeContainer("mydsp", "dsp", numInputs, numOutputs, dst);
+
     CodeContainer* container;
 
     if (gOpenCLSwitch) {
@@ -492,3 +495,25 @@ void CPPWorkStealingCodeContainer::generateCompute(int n)
     tab(n+1, *fOut); *fOut << "}";
 }
 
+// Vector
+CPPMRCodeContainer::CPPMRCodeContainer(const string& name, const string& super, int numInputs, int numOutputs, std::ostream* out)
+    : CPPCodeContainer(name, super, numInputs, numOutputs, out)
+{}
+
+void CPPMRCodeContainer::generateCompute(int n)
+{
+    // Generates declaration
+    tab(n+1, *fOut);
+    tab(n+1, *fOut); *fOut << subst("virtual void compute(int $0, $1** inputs, $1** outputs) {", fFullCount, xfloat());
+    tab(n+2, *fOut);
+    fCodeProducer.Tab(n+2);
+
+    // Generates local variables declaration and setup
+    generateComputeBlock(&fCodeProducer);
+
+    // Generate it
+    // FIXME: hack to enable MR code generation
+    mrBlock->accept(&fCodeProducer);
+
+    tab(n+1, *fOut); *fOut << "}";
+}

@@ -129,4 +129,78 @@ class CPPWorkStealingCodeContainer : public WSSCodeContainer, public CPPCodeCont
 
 };
 
+class CPPMRCodeContainer : public CPPCodeContainer {
+    public:
+        BlockInst * mrBlock;
+
+        CPPMRCodeContainer(const string& name, const string& super, int numInputs, int numOutputs, std::ostream* out);
+        void generateCompute(int tab);
+
+        void processFIR(void)
+        {
+            string index = "index";
+            string counter = "cnt";
+
+            // Define result block
+            BlockInst* block_res = InstBuilder::genBlockInst();
+
+            // Declare the "index" variable outside the loop
+            DeclareVarInst* index_dec = InstBuilder::genDecStackVar(index, InstBuilder::genBasicTyped(Typed::kInt));
+            block_res->pushBackInst(index_dec);
+            block_res->pushBackInst(InstBuilder::genLabelInst("// Main loop"));
+
+            BlockInst* loop_code = InstBuilder::genBlockInst();
+
+            // Generate local input/output access
+            generateLocalInputs(loop_code);
+            generateLocalOutputs(loop_code);
+
+            // Generate : int count = 32;
+            DeclareVarInst* count_dec1 = InstBuilder::genDecStackVar("count", InstBuilder::genBasicTyped(Typed::kInt), InstBuilder::genIntNumInst(gVecSize));
+            loop_code->pushBackInst(count_dec1);
+
+            // Generates the loop DAG
+            generateDAGLoop(loop_code, count_dec1);
+
+            // Generates the DAG enclosing loop
+            StoreVarInst* loop_init = index_dec->store(InstBuilder::genIntNumInst(0));
+
+            ValueInst* loop_end = InstBuilder::genBinopInst(kLE, index_dec->load(),
+                InstBuilder::genSub(InstBuilder::genLoadFunArgsVar(counter), InstBuilder::genIntNumInst(gVecSize)));
+
+            StoreVarInst* loop_increment = index_dec->store(InstBuilder::genAdd(index_dec->load(), gVecSize));
+
+            StatementInst* loop = InstBuilder::genForLoopInst(loop_init, loop_end, loop_increment, loop_code);
+
+            // Put loop in block_res
+            block_res->pushBackInst(loop);
+
+            // Remaining frames
+            block_res->pushBackInst(InstBuilder::genLabelInst("// Remaining frames"));
+
+            ValueInst* if_cond = InstBuilder::genLessThan(InstBuilder::genLoadStackVar(index), InstBuilder::genLoadFunArgsVar(counter));
+
+            BlockInst* then_block = InstBuilder::genBlockInst();
+
+            // Generate local input/output access
+            generateLocalInputs(then_block);
+            generateLocalOutputs(then_block);
+
+            // Generate : int count = fullcount-index;
+            DeclareVarInst* count_dec2 = InstBuilder::genDecStackVar("count", InstBuilder::genBasicTyped(Typed::kInt), InstBuilder::genBinopInst(kSub,
+                                            InstBuilder::genLoadFunArgsVar(counter), InstBuilder::genLoadStackVar(index)));
+
+            then_block->pushBackInst(count_dec2);
+
+            // Generates the loop DAG
+            generateDAGLoop(then_block, count_dec2);
+
+            block_res->pushBackInst(InstBuilder::genIfInst(if_cond, then_block));
+
+            mrBlock = block_res;
+        }
+
+
+};
+
 #endif

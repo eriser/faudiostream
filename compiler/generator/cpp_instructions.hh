@@ -45,6 +45,7 @@ using namespace std;
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <stdexcept>
 
 class CPPInstVisitor : public InstVisitor, public StringTypeManager {
 
@@ -288,10 +289,11 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
         {
             NamedAddress* named = dynamic_cast<NamedAddress*>(inst->fAddress);
             IndexedAddress* indexed = dynamic_cast<IndexedAddress*>(inst->fAddress);
+            VectorAddress* vector = dynamic_cast<VectorAddress*>(inst->fAddress);
 
             if (named) {
                 *fOut << named->getName() << " = ";
-            } else {
+            } else if (indexed) {
                 /*
                 *fOut << indexed->getName() << "[";
                 indexed->fAddress->accept(this);
@@ -300,6 +302,8 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
                 *fOut << indexed->getName();
                 indexed->accept(this);
                 *fOut << " = ";
+            } else if (vector) {
+                throw std::runtime_error("cannot store to vector address");
             }
             inst->fValue->accept(this);
             EndLine();
