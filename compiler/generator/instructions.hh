@@ -1760,6 +1760,7 @@ struct InstBuilder
     // Addresses
     static NamedAddress* genNamedAddress(const string& name, Address::AccessType access) { return new NamedAddress(name, access); }
     static IndexedAddress* genIndexedAddress(Address* address, ValueInst* index) { return new IndexedAddress(address, index); }
+    static CastAddress* genCastAddress(Address * address, Typed * typed) { return new CastAddress(address, typed); }
 
     // Helper build methods
 

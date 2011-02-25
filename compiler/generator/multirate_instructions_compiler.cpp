@@ -177,6 +177,9 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * vec, 
     if (isSigVectorize(sig, arg1, arg2))
         return compileAssignmentVectorize(vec, sig, index, arg1, arg2);
 
+    if (isSigSerialize(sig, arg1))
+        return compileAssignmentSerialize(vec, sig, index, arg1);
+
     if (isPrimitive(sig))
         return store(dest, compileSample(sig, index));
 
@@ -200,6 +203,9 @@ ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, ValueInst * i
     Tree arg1, arg2;
     if (isSigVectorize(sig, arg1, arg2))
         return compileSampleVectorize(sig, index, arg1, arg2);
+
+    if (isSigSerialize(sig, arg1))
+        return compileSampleSerialize(sig, index, arg1);
 
     if (isPrimitive(sig))
         return compileSamplePrimitive(sig, index);
@@ -368,6 +374,61 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, Valu
 
     IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(), index);
     return InstBuilder::genLoadVarInst(addressToReturn);
+}
+
+StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Address * vec, Tree sig,
+                                                                          ValueInst * index, Tree arg1)
+{
+    if (!isShared(sig)) {
+        // FIXME: introduce conditional
+        DeclareTypeInst* declareArgType = InstBuilder::genType(getSigType(arg1));
+        pushGlobalDeclare(declareArgType);
+
+        CastAddress * castedResultAddress = InstBuilder::genCastAddress(vec, declareArgType->fType);
+
+        int m = getSigRate(arg1);
+
+        ValueInst * indexInSource = InstBuilder::genDiv(index, InstBuilder::genIntNumInst(m));
+
+        return compileAssignment(castedResultAddress, arg1, indexInSource);
+
+        assert(false);
+    } else
+        return store(vec, compileSampleSerialize(sig, index, arg1));
+}
+
+ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, ValueInst* index, Tree arg1)
+{
+    DeclareTypeInst* declareSigType = InstBuilder::genType(getSigType(sig));
+    DeclareTypeInst* declareArgType = InstBuilder::genType(getSigType(arg1));
+    pushGlobalDeclare(declareSigType);
+    pushGlobalDeclare(declareArgType);
+
+    int m = getSigRate(arg1);
+    int n = getSigRate(sig) / getSigRate(arg1);
+
+    int loopSize = n * m * gVecSize;
+
+    ArrayTyped* resultType = InstBuilder::genArrayTyped(declareSigType->fType, loopSize);
+    pushGlobalDeclare(InstBuilder::genDeclareTypeInst(resultType));
+
+    DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultType);
+
+    pushDeclare(declareResultBuffer);
+
+    fContainer->openLoop(getFreshID("j_"), loopSize);
+
+    // FIXME: add conditional
+
+    IndexedAddress * destinationAddress = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(),
+                                                                         getCurrentLoopIndex());
+    CastAddress * castedDestiationAddress = InstBuilder::genCastAddress(destinationAddress, declareArgType->fType);
+
+    ValueInst * compileIndex = InstBuilder::genDiv(getCurrentLoopIndex(), InstBuilder::genIntNumInst(n));
+
+    pushComputeDSPMethod(compileAssignment(castedDestiationAddress, arg1, compileIndex));
+
+    fContainer->closeLoop();
 }
 
 
