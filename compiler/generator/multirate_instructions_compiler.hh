@@ -44,10 +44,14 @@ private:
 
     // signal-specific
     ValueInst * compileSampleInput(Tree sig, int i, ValueInst * index);
+    ValueInst * compileSampleVectorize(Tree sig, ValueInst* index, Tree arg1, Tree arg2);
     ValueInst * compileSamplePrimitive(Tree sig, ValueInst * index);
     ValueInst * compilePrimitive(Tree sig, ValueInst * index);
 
     ValueInst * compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, ValueInst * index);
+
+    StatementInst * compileAssignmentVectorize(Address * vec, Tree sig, ValueInst * index, Tree arg1, Tree arg2);
+
 
     // helper functions
     StatementInst * store (Address * address, ValueInst * value);

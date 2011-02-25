@@ -173,6 +173,10 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * vec, 
     if (isSigInput(sig, &i))
         return store(dest, compileSample(sig, index));
 
+    Tree arg1, arg2;
+    if (isSigVectorize(sig, arg1, arg2))
+        return compileAssignmentVectorize(vec, sig, index, arg1, arg2);
+
     if (isPrimitive(sig))
         return store(dest, compileSample(sig, index));
 
@@ -192,6 +196,10 @@ ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, ValueInst * i
 
     if (isSigInput(sig, &i))
         return compileSampleInput(sig, i, index);
+
+    Tree arg1, arg2;
+    if (isSigVectorize(sig, arg1, arg2))
+        return compileSampleVectorize(sig, index, arg1, arg2);
 
     if (isPrimitive(sig))
         return compileSamplePrimitive(sig, index);
@@ -288,6 +296,7 @@ ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tr
         }
     }
 }
+
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, ValueInst * index)
 {
     int     i;
@@ -299,6 +308,66 @@ ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, ValueInst 
 
 
     throw std::runtime_error("not implemented");
+}
+
+
+StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Address * vec, Tree sig,
+                                                                          ValueInst * index, Tree arg1, Tree arg2)
+{
+    if (!isShared(sig)) {
+        IntNumInst * n = InstBuilder::genIntNumInst(tree2int(arg2));
+
+        fContainer->openLoop("k", n->fNum);
+
+        IndexedAddress * destination = InstBuilder::genIndexedAddress(vec, getCurrentLoopIndex());
+        ValueInst * computeIndex = InstBuilder::genAdd (InstBuilder::genMul(index, n),
+                                                        getCurrentLoopIndex());
+
+        StatementInst * blockInst = compileAssignment(destination, arg1, computeIndex);
+
+        fContainer->closeLoop();
+        return blockInst;
+    } else {
+        IndexedAddress * dest = InstBuilder::genIndexedAddress(vec, index);
+        return store(dest, compileSample(sig, index));
+    }
+}
+
+ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, ValueInst* index, Tree arg1, Tree arg2)
+{
+    ValueInst * n = InstBuilder::genIntNumInst(tree2int(arg2));
+
+    int sigRate = getSigRate(sig);
+    AudioType * sigType = getSigType(sig);
+    DeclareTypeInst * declareSigType = InstBuilder::genType(sigType);
+    Typed * sigTyped = declareSigType->fType;
+
+    DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"),
+                                                                       InstBuilder::genArrayTyped(sigTyped, sigRate * gVecSize));
+
+    pushDeclare(declareResultBuffer);
+
+    fContainer->openLoop(getFreshID("j_"), sigRate * gVecSize);
+
+    DeclareVarInst* loop_decl = InstBuilder::genDecLoopVar(getFreshID("k"), InstBuilder::genBasicTyped(Typed::kInt),
+                                                        InstBuilder::genIntNumInst(0));
+    ValueInst* loop_end = InstBuilder::genLessThan(loop_decl->load(), n);
+    StoreVarInst* loop_increment = loop_decl->store(InstBuilder::genAdd(loop_decl->load(), 1));
+    ForLoopInst* loop = InstBuilder::genForLoopInst(loop_decl, loop_end, loop_increment);
+
+    IndexedAddress * compileAddress = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(),
+                                                                                                    getCurrentLoopIndex()),
+                                                                     loop_decl->load());
+
+    ValueInst * compileIndex = InstBuilder::genAdd(InstBuilder::genMul(getCurrentLoopIndex(), n),
+                                                   loop_decl->load());
+
+    loop->pushBackInst(compileAssignment(compileAddress, arg1, compileIndex));
+
+    fContainer->closeLoop();
+
+    IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(), index);
+    return InstBuilder::genLoadVarInst(addressToReturn);
 }
 
 
