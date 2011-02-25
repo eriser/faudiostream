@@ -114,6 +114,44 @@ void MultirateInstructionsCompiler::compileVector(VectorAddress * vec, Tree sig)
     pushComputeDSPMethod(loop);
 }
 
+static bool isPrimitive(Tree sig)
+{
+    int     i;
+    double  r;
+    Tree    c, sel, x, y, z, label, id, ff, largs, type, name, file;
+
+    if (   getUserData(sig)
+        || isSigBinOp(sig, &i, x, y)
+        || isSigFFun(sig, ff, largs)
+        || isSigFConst(sig, type, name, file)
+        || isSigFVar(sig, type, name, file)
+
+        || isSigTable(sig, id, x, y)
+        || isSigWRTbl(sig, id, x, y, z)
+        || isSigRDTbl(sig, x, y)
+
+        || isSigSelect2(sig, sel, x, y)
+        || isSigSelect3(sig, sel, x, y, z)
+
+        || isSigGen(sig, x)
+
+        || isSigIntCast(sig, x)
+        || isSigFloatCast(sig, x)
+
+        || isSigButton(sig, label)
+        || isSigCheckbox(sig, label)
+        || isSigVSlider(sig, label,c,x,y,z)
+        || isSigHSlider(sig, label,c,x,y,z)
+        || isSigNumEntry(sig, label,c,x,y,z)
+
+        || isSigVBargraph(sig, label,x,y,z)
+        || isSigHBargraph(sig, label,x,y,z)
+        || isSigAttach(sig, x, y) )
+        return true;
+    else
+        return false;
+}
+
 StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * vec, Tree sig, ValueInst * index)
 {
     IndexedAddress * dest = InstBuilder::genIndexedAddress(vec, index);
@@ -127,6 +165,9 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * vec, 
         return store(dest, compileSample(sig, index));
 
     if (isSigInput(sig, &i))
+        return store(dest, compileSample(sig, index));
+
+    if (isPrimitive(sig))
         return store(dest, compileSample(sig, index));
 
     throw std::runtime_error("not implemented");
@@ -146,6 +187,9 @@ ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, ValueInst * i
     if (isSigInput(sig, &i))
         return compileSampleInput(sig, i, index);
 
+    if (isPrimitive(sig))
+        return compileSamplePrimitive(sig, index);
+
     throw std::runtime_error("not implemented");
     return NULL;
 }
@@ -158,6 +202,48 @@ ValueInst * MultirateInstructionsCompiler::compileSampleInput(Tree sig, int i, V
     ValueInst * castedToFloat = InstBuilder::genCastNumInst(res, InstBuilder::genBasicTyped(itfloat()));
 
     return castedToFloat;
+}
+
+
+ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, ValueInst * index)
+{
+    if (isShared(sig)) {
+        ValueInst * compiledInstruction;
+        DeclareVarInst * cachedValue;
+        if (getCompiledExpression(sig, compiledInstruction)) {
+            cachedValue = dynamic_cast<DeclareVarInst*>(compiledInstruction);
+        } else {
+            int rate = getSigRate(sig);
+            AudioType* type = getSigType(sig);
+            DeclareTypeInst* sampleTypeDeclaration = InstBuilder::genType(type);
+            ArrayTyped* sampleArrayType = InstBuilder::genArrayTyped(sampleTypeDeclaration->fType,
+                                                                     rate * gVecSize);
+
+            pushGlobalDeclare(InstBuilder::genDeclareTypeInst(sampleArrayType));
+
+            cachedValue = InstBuilder::genDecStackVar(getFreshID("cacheVector"), sampleArrayType);
+
+            fContainer->openLoop(getFreshID("i_"), rate);
+            IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(cachedValue->getAddress(), getCurrentLoopIndex());
+            pushComputeDSPMethod(store(storeAddress, compilePrimitive(sig, index)));
+            fContainer->closeLoop();
+        }
+
+        IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(cachedValue->getAddress(), index);
+        return InstBuilder::genLoadVarInst(addressToReturn);
+
+    } else {
+        return compilePrimitive(sig, index);
+    }
+}
+
+ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, ValueInst * index)
+{
+    int     i;
+    double  r;
+    Tree    c, sel, x, y, z, label, id, ff, largs, type, name, file;
+
+    throw std::runtime_error("not implemented");
 }
 
 

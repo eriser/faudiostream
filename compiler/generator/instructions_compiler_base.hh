@@ -105,6 +105,12 @@ protected:
     void setSharingCount(Tree sig, int count);
     void sharingAnalysis(Tree t);
     void sharingAnnotation(int vctxt, Tree sig);
+    bool isShared(Tree sig)
+    {
+        return getSharingCount(sig) > 1;
+    }
+
+
     Tree prepare(Tree LS);
     Tree prepare2(Tree L0);
 
@@ -126,6 +132,11 @@ protected:
     void generateMacroInterfaceTree(const string& pathname, Tree t);
     void generateMacroInterfaceElements(const string& pathname, Tree elements);
     void generateWidgetMacro(const string& pathname, Tree fulllabel, Tree varname, Tree sig);
+
+    ValueInst * getCurrentLoopIndex(void)
+    {
+        return fContainer->getCurLoop()->getLoopIndex();
+    }
 
 public:
     virtual void compileMultiSignal(Tree rootSignal) = 0;

@@ -44,6 +44,8 @@ private:
 
     // signal-specific
     ValueInst * compileSampleInput(Tree sig, int i, ValueInst * index);
+    ValueInst * compileSamplePrimitive(Tree sig, ValueInst * index);
+    ValueInst * compilePrimitive(Tree sig, ValueInst * index);
 
     // helper functions
     StatementInst * store (Address * address, ValueInst * value);

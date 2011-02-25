@@ -817,6 +817,7 @@ struct DeclareVarInst : public StatementInst
 
     StatementInst* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 
+    Address * getAddress(void) { return fAddress; }
     struct StoreVarInst * store (ValueInst * val);
     struct LoadVarInst * load ();
 };
