@@ -278,6 +278,7 @@ void CodeLoop::absorb(CodeLoop* l)
 {
     // the loops must have the same number of iterations
     assert(fRate == l->fRate);
+    assert(fLoopIndex == l->fLoopIndex);
 
     // update recursive dependencies by adding those from the absorbed loop
     fRecDependencies.insert(l->fRecDependencies.begin(), l->fRecDependencies.end());
