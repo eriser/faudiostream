@@ -87,8 +87,11 @@ void MultirateInstructionsCompiler::compileTop(Tree rootSignal)
 
     for (int i = 0; i != outputCount; ++i) {
         Tree sig = nth(rootSignal, i);
+        int rate = getSigRate(sig);
+        fContainer->setOutputRate(i, rate);
+
         string outputName;
-        Loki::SPrintf(outputName, "output%d")(i);
+        Loki::SPrintf(outputName, "fOutput%d")(i);
 
         VectorAddress * outI = new VectorAddress(outputName, InstBuilder::genBasicTyped(Typed::kFloat),
                                                  numeric_limits<int>::max(),  // FIXME: pessimise, we cannot know the `count' value at compile-time
@@ -105,11 +108,14 @@ void MultirateInstructionsCompiler::compileVector(VectorAddress * vec, Tree sig)
     ValueInst * rate = InstBuilder::genIntNumInst(sigRate);
 
     DeclareVarInst* loop_decl = InstBuilder::genDecLoopVar("j", InstBuilder::genBasicTyped(Typed::kInt), InstBuilder::genIntNumInst(0));
-    ValueInst* loop_end = InstBuilder::genLessThan(loop_decl->load(), InstBuilder::genMul(rate, fVectorSize));
+    ValueInst* loop_end = InstBuilder::genLessThan(loop_decl->load(), rate);
     StoreVarInst* loop_increment = loop_decl->store(InstBuilder::genAdd(loop_decl->load(), 1));
     ForLoopInst* loop = InstBuilder::genForLoopInst(loop_decl, loop_end, loop_increment);
 
-    loop->pushFrontInst(compileAssignment(vec, sig, loop_decl->load()));
+    ValueInst * index = InstBuilder::genAdd(InstBuilder::genMul(getCurrentLoopIndex(), rate),
+                                            loop_decl->load());
+
+    loop->pushFrontInst(compileAssignment(vec, sig, index));
 
     pushComputeDSPMethod(loop);
 }
@@ -196,11 +202,13 @@ ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, ValueInst * i
 
 ValueInst * MultirateInstructionsCompiler::compileSampleInput(Tree sig, int i, ValueInst * index)
 {
-    string name = subst("input$0", T(i));
+    int rate = getSigRate(sig);
+    fContainer->setInputRate(i, rate);
+
+    string name = subst("fInput$0", T(i));
     LoadVarInst * res = InstBuilder::genLoadArrayStackVar(name, index);
 
     ValueInst * castedToFloat = InstBuilder::genCastNumInst(res, InstBuilder::genBasicTyped(itfloat()));
-
     return castedToFloat;
 }
 
@@ -237,11 +245,58 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, Valu
     }
 }
 
+ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, ValueInst * index)
+{
+    int t1 = getSigType(arg1)->nature();
+    int t2 = getSigType(arg2)->nature();
+    int t3 = getSigType(sig)->nature();
+
+    ValueInst* res = NULL;
+    ValueInst* val1 = compileSample(arg1, index);
+    ValueInst* val2 = compileSample(arg2, index);
+
+    // Arguments and expected result type analysis, add the required "cast" when needed
+    if (t1 == kReal) {
+        if (t2 == kReal) {
+            res = InstBuilder::genBinopInst(opcode, val1, val2);
+            if (t3 == kReal) {
+                // Nothing
+            } else {
+                res = InstBuilder::genCastNumInst(res, InstBuilder::genBasicTyped(Typed::kInt));
+            }
+        } else {
+            res = InstBuilder::genBinopInst(opcode, val1, InstBuilder::genCastNumInst(val2, InstBuilder::genBasicTyped(itfloat())));
+            if (t3 == kReal) {
+                // Nothing
+            } else {
+                res = InstBuilder::genCastNumInst(res, InstBuilder::genBasicTyped(Typed::kInt));
+            }
+        }
+    } else if (t2 == kReal) {
+        res = InstBuilder::genBinopInst(opcode, InstBuilder::genCastNumInst(val1, InstBuilder::genBasicTyped(itfloat())), val2);
+        if (t3 == kReal) {
+            // Nothing
+        } else {
+            res = InstBuilder::genCastNumInst(res, InstBuilder::genBasicTyped(Typed::kInt));
+        }
+    } else {
+        res = InstBuilder::genBinopInst(opcode, val1, val2);
+        if (t3 == kReal) {
+            res = InstBuilder::genCastNumInst(res, InstBuilder::genBasicTyped(itfloat()));
+        } else {
+            // Nothing
+        }
+    }
+}
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, ValueInst * index)
 {
     int     i;
     double  r;
     Tree    c, sel, x, y, z, label, id, ff, largs, type, name, file;
+
+    if (isSigBinOp(sig, &i, x, y))
+        return compileBinop(sig, i, x, y, index);
+
 
     throw std::runtime_error("not implemented");
 }

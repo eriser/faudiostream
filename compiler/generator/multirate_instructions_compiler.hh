@@ -47,8 +47,14 @@ private:
     ValueInst * compileSamplePrimitive(Tree sig, ValueInst * index);
     ValueInst * compilePrimitive(Tree sig, ValueInst * index);
 
+    ValueInst * compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, ValueInst * index);
+
     // helper functions
     StatementInst * store (Address * address, ValueInst * value);
+    LoadVarInst * loadCount(void)
+    {
+        return InstBuilder::genLoadStackVar("count");
+    }
 
     ValueInst * fVectorSize;
 };
