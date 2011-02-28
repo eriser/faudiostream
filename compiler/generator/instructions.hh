@@ -135,6 +135,7 @@ class InstVisitor {
         // Addresses
         virtual void visit(NamedAddress* address) {}
         virtual void visit(IndexedAddress* address) {}
+        virtual void visit(CastAddress* address) {}
 
         // Primitives : numbers
         virtual void visit(FloatNumInst* inst) {}

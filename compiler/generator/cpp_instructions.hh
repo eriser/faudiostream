@@ -22,6 +22,8 @@
 #ifndef _CPP_INSTRUCTIONS_H
 #define _CPP_INSTRUCTIONS_H
 
+#include "loki/SafeFormat.h"
+
 /**********************************************************************
 			- code_gen.h : generic code generator (projet FAUST) -
 
@@ -251,6 +253,15 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
             *fOut << "[";
             indexed->fIndex->accept(this);
             *fOut << "]";
+        }
+
+        virtual void visit(CastAddress* casted)
+        {
+            string s;
+            Loki::SPrintf(s, "reinterpret_cast<%s>(")(generateType(casted->fType));
+            *fOut << s;
+            casted->fAddress->accept(this);
+            *fOut << ")";
         }
 
         virtual void visit(LoadVarInst* inst)
