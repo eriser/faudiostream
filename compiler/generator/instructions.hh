@@ -2031,6 +2031,72 @@ struct InstBuilder
     static Typed* mapFIRType(AudioType* type);
 };
 
+struct FIRIndex
+{
+    explicit FIRIndex(ValueInst * inst):
+        data(inst)
+    {}
+
+    FIRIndex(FIRIndex const & rhs):
+        data(rhs.data)
+    {}
+
+    operator ValueInst* (void)
+    {
+        return data;
+    }
+
+    FIRIndex & operator+ (ValueInst * rhs)
+    {
+        data = InstBuilder::genAdd(data, rhs);
+        return *this;
+    }
+
+    FIRIndex & operator+ (FIRIndex const & rhs)
+    {
+        return operator+(rhs.data);
+    }
+
+    FIRIndex & operator+ (int rhs)
+    {
+        return operator+(InstBuilder::genIntNumInst(rhs));
+    }
+
+    FIRIndex & operator* (ValueInst * rhs)
+    {
+        data = InstBuilder::genMul(data, rhs);
+        return *this;
+    }
+
+    FIRIndex & operator* (FIRIndex const & rhs)
+    {
+        return operator*(rhs.data);
+    }
+
+    FIRIndex & operator* (int rhs)
+    {
+        return operator*(InstBuilder::genIntNumInst(rhs));
+    }
+
+    FIRIndex & operator/ (ValueInst * rhs)
+    {
+        data = InstBuilder::genDiv(data, rhs);
+        return *this;
+    }
+
+    FIRIndex & operator/ (FIRIndex const & rhs)
+    {
+        return operator/(rhs.data);
+    }
+
+    FIRIndex & operator/ (int rhs)
+    {
+        return operator/(InstBuilder::genIntNumInst(rhs));
+    }
+
+private:
+    ValueInst * data;
+};
 
 #endif
 

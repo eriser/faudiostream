@@ -112,8 +112,7 @@ void MultirateInstructionsCompiler::compileVector(VectorAddress * vec, Tree sig)
     StoreVarInst* loop_increment = loop_decl->store(InstBuilder::genAdd(loop_decl->load(), 1));
     ForLoopInst* loop = InstBuilder::genForLoopInst(loop_decl, loop_end, loop_increment);
 
-    ValueInst * index = InstBuilder::genAdd(InstBuilder::genMul(getCurrentLoopIndex(), rate),
-                                            loop_decl->load());
+    FIRIndex index = FIRIndex(getCurrentLoopIndex()) * rate + loop_decl->load();
 
     loop->pushFrontInst(compileAssignment(vec, sig, index));
 
@@ -158,7 +157,7 @@ static bool isPrimitive(Tree sig)
         return false;
 }
 
-StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * vec, Tree sig, ValueInst * index)
+StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * vec, Tree sig, FIRIndex index)
 {
     IndexedAddress * dest = InstBuilder::genIndexedAddress(vec, index);
 
@@ -187,7 +186,7 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * vec, 
     return NULL;
 }
 
-ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, ValueInst * index)
+ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, FIRIndex index)
 {
     int i;
     if (isSigInt(sig, &i))
@@ -214,7 +213,7 @@ ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, ValueInst * i
     return NULL;
 }
 
-ValueInst * MultirateInstructionsCompiler::compileSampleInput(Tree sig, int i, ValueInst * index)
+ValueInst * MultirateInstructionsCompiler::compileSampleInput(Tree sig, int i, FIRIndex index)
 {
     int rate = getSigRate(sig);
     fContainer->setInputRate(i, rate);
@@ -227,7 +226,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleInput(Tree sig, int i, V
 }
 
 
-ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, ValueInst * index)
+ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRIndex index)
 {
     if (isShared(sig)) {
         ValueInst * compiledInstruction;
@@ -259,7 +258,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, Valu
     }
 }
 
-ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, ValueInst * index)
+ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex index)
 {
     int t1 = getSigType(arg1)->nature();
     int t2 = getSigType(arg2)->nature();
@@ -303,7 +302,7 @@ ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tr
     }
 }
 
-ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, ValueInst * index)
+ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex index)
 {
     int     i;
     double  r;
@@ -318,7 +317,7 @@ ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, ValueInst 
 
 
 StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Address * vec, Tree sig,
-                                                                          ValueInst * index, Tree arg1, Tree arg2)
+                                                                          FIRIndex index, Tree arg1, Tree arg2)
 {
     if (!isShared(sig)) {
         IntNumInst * n = InstBuilder::genIntNumInst(tree2int(arg2));
@@ -331,8 +330,7 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Addres
         ForLoopInst* loop = InstBuilder::genForLoopInst(loop_decl, loop_end, loop_increment);
 
         IndexedAddress * destination = InstBuilder::genIndexedAddress(vec, getCurrentLoopIndex());
-        ValueInst * computeIndex = InstBuilder::genAdd (InstBuilder::genMul(index, n),
-                                                getCurrentLoopIndex());
+        FIRIndex computeIndex = index * n + getCurrentLoopIndex();
 
         StatementInst * blockInst = compileAssignment(destination, arg1, computeIndex);
         loop->pushBackInst(blockInst);
@@ -355,7 +353,7 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Addres
     }
 }
 
-ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, ValueInst* index, Tree arg1, Tree arg2)
+ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRIndex index, Tree arg1, Tree arg2)
 {
     ValueInst * n = InstBuilder::genIntNumInst(tree2int(arg2));
 
@@ -381,8 +379,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, Valu
                                                                                                     getCurrentLoopIndex()),
                                                                      loop_decl->load());
 
-    ValueInst * compileIndex = InstBuilder::genAdd(InstBuilder::genMul(getCurrentLoopIndex(), n),
-                                                   loop_decl->load());
+    FIRIndex compileIndex = FIRIndex(getCurrentLoopIndex()) * n + loop_decl->load();
 
     loop->pushBackInst(compileAssignment(compileAddress, arg1, compileIndex));
 
@@ -393,7 +390,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, Valu
 }
 
 StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Address * vec, Tree sig,
-                                                                          ValueInst * index, Tree arg1)
+                                                                          FIRIndex index, Tree arg1)
 {
     if (!isShared(sig)) {
         int m = getSigRate(arg1);
@@ -407,9 +404,9 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Addres
 
         ValueInst * condition = InstBuilder::genBinopInst(kEQ,
                                                         InstBuilder::genBinopInst(kRem, index, InstBuilder::genIntNumInst(n)),
-                                                        InstBuilder::genIntNumInst(n));
+                                                        InstBuilder::genIntNumInst(0));
 
-        ValueInst * indexInSource = InstBuilder::genDiv(index, InstBuilder::genIntNumInst(m));
+        FIRIndex indexInSource = index / m;
         BlockInst * thenCase = InstBuilder::genBlockInst();
         thenCase->pushBackInst(compileAssignment(castedResultAddress, arg1, indexInSource));
         return InstBuilder::genIfInst(condition, thenCase);
@@ -417,7 +414,7 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Addres
         return store(vec, compileSampleSerialize(sig, index, arg1));
 }
 
-ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, ValueInst* index, Tree arg1)
+ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRIndex index, Tree arg1)
 {
     DeclareTypeInst* declareSigType = InstBuilder::genType(getSigType(sig));
     DeclareTypeInst* declareArgType = InstBuilder::genType(getSigType(arg1));
@@ -442,13 +439,11 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, Valu
                                                       InstBuilder::genBinopInst(kRem, getCurrentLoopIndex(), InstBuilder::genIntNumInst(n)),
                                                       InstBuilder::genIntNumInst(n));
 
-
-
     IndexedAddress * destinationAddress = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(),
                                                                          getCurrentLoopIndex());
     CastAddress * castedDestiationAddress = InstBuilder::genCastAddress(destinationAddress, declareArgType->fType);
 
-    ValueInst * compileIndex = InstBuilder::genDiv(getCurrentLoopIndex(), InstBuilder::genIntNumInst(n));
+    FIRIndex compileIndex = FIRIndex(getCurrentLoopIndex()) / n;
     BlockInst * thenCase = InstBuilder::genBlockInst();
     thenCase->pushBackInst(compileAssignment(castedDestiationAddress, arg1, compileIndex));
 
@@ -457,6 +452,9 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, Valu
     pushComputeDSPMethod(ifStatement);
 
     fContainer->closeLoop();
+
+    IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(), index);
+    return InstBuilder::genLoadVarInst(addressToReturn);
 }
 
 
