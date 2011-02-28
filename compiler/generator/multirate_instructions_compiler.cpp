@@ -240,6 +240,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
             ArrayTyped* sampleArrayType = InstBuilder::genArrayTyped(sampleTypeDeclaration->fType,
                                                                      rate * gVecSize);
 
+            pushGlobalDeclare(sampleTypeDeclaration);
             pushGlobalDeclare(InstBuilder::genDeclareTypeInst(sampleArrayType));
 
             cachedValue = InstBuilder::genDecStackVar(getFreshID("cacheVector"), sampleArrayType);
@@ -360,10 +361,14 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
     int sigRate = getSigRate(sig);
     AudioType * sigType = getSigType(sig);
     DeclareTypeInst * declareSigType = InstBuilder::genType(sigType);
+    pushGlobalDeclare(declareSigType);
     Typed * sigTyped = declareSigType->fType;
 
-    DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"),
-                                                                       InstBuilder::genArrayTyped(sigTyped, sigRate * gVecSize));
+    DeclareTypeInst * declareResultBufferType = InstBuilder::genDeclareTypeInst(InstBuilder::genArrayTyped(sigTyped,
+                                                                                                           sigRate * gVecSize));
+    pushGlobalDeclare(declareResultBufferType);
+
+    DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), declareResultBufferType->fType);
 
     pushDeclare(declareResultBuffer);
 
