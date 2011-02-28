@@ -157,7 +157,7 @@ static bool isPrimitive(Tree sig)
         return false;
 }
 
-StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * vec, Tree sig, FIRIndex index)
+StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * vec, Tree sig, FIRIndex const & index)
 {
     IndexedAddress * dest = InstBuilder::genIndexedAddress(vec, index);
 
@@ -186,7 +186,7 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * vec, 
     return NULL;
 }
 
-ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, FIRIndex index)
+ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, FIRIndex const & index)
 {
     int i;
     if (isSigInt(sig, &i))
@@ -213,7 +213,7 @@ ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, FIRIndex inde
     return NULL;
 }
 
-ValueInst * MultirateInstructionsCompiler::compileSampleInput(Tree sig, int i, FIRIndex index)
+ValueInst * MultirateInstructionsCompiler::compileSampleInput(Tree sig, int i, FIRIndex const & index)
 {
     int rate = getSigRate(sig);
     fContainer->setInputRate(i, rate);
@@ -226,7 +226,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleInput(Tree sig, int i, F
 }
 
 
-ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRIndex index)
+ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRIndex const & index)
 {
     if (isShared(sig)) {
         ValueInst * compiledInstruction;
@@ -259,7 +259,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
     }
 }
 
-ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex index)
+ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index)
 {
     int t1 = getSigType(arg1)->nature();
     int t2 = getSigType(arg2)->nature();
@@ -301,9 +301,11 @@ ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tr
             // Nothing
         }
     }
+
+    return res;
 }
 
-ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex index)
+ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex const & index)
 {
     int     i;
     double  r;
@@ -318,7 +320,7 @@ ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex i
 
 
 StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Address * vec, Tree sig,
-                                                                          FIRIndex index, Tree arg1, Tree arg2)
+                                                                          FIRIndex const & index, Tree arg1, Tree arg2)
 {
     if (!isShared(sig)) {
         IntNumInst * n = InstBuilder::genIntNumInst(tree2int(arg2));
@@ -354,7 +356,7 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Addres
     }
 }
 
-ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRIndex index, Tree arg1, Tree arg2)
+ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2)
 {
     ValueInst * n = InstBuilder::genIntNumInst(tree2int(arg2));
 
@@ -395,7 +397,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
 }
 
 StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Address * vec, Tree sig,
-                                                                          FIRIndex index, Tree arg1)
+                                                                          FIRIndex const & index, Tree arg1)
 {
     if (!isShared(sig)) {
         int m = getSigRate(arg1);
@@ -419,7 +421,7 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Addres
         return store(vec, compileSampleSerialize(sig, index, arg1));
 }
 
-ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRIndex index, Tree arg1)
+ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRIndex const & index, Tree arg1)
 {
     DeclareTypeInst* declareSigType = InstBuilder::genType(getSigType(sig));
     DeclareTypeInst* declareArgType = InstBuilder::genType(getSigType(arg1));

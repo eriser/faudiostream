@@ -2042,57 +2042,56 @@ struct FIRIndex
         data(rhs.data)
     {}
 
-    operator ValueInst* (void)
+    operator ValueInst* (void) const
     {
         return data;
     }
 
-    FIRIndex & operator+ (ValueInst * rhs)
+    friend FIRIndex operator+ (FIRIndex const & lhs, ValueInst * rhs)
     {
-        data = InstBuilder::genAdd(data, rhs);
-        return *this;
+        return FIRIndex(InstBuilder::genAdd(lhs.data, rhs));
     }
 
-    FIRIndex & operator+ (FIRIndex const & rhs)
+    friend FIRIndex operator+ (FIRIndex const & lhs, FIRIndex const & rhs)
     {
-        return operator+(rhs.data);
+        return operator+(lhs, rhs.data);
     }
 
-    FIRIndex & operator+ (int rhs)
+    friend FIRIndex operator+ (FIRIndex const & lhs, int rhs)
     {
-        return operator+(InstBuilder::genIntNumInst(rhs));
+        return operator+(lhs, InstBuilder::genIntNumInst(rhs));
     }
 
-    FIRIndex & operator* (ValueInst * rhs)
+
+    friend FIRIndex operator* (FIRIndex const & lhs, ValueInst * rhs)
     {
-        data = InstBuilder::genMul(data, rhs);
-        return *this;
+        return FIRIndex(InstBuilder::genAdd(lhs.data, rhs));
     }
 
-    FIRIndex & operator* (FIRIndex const & rhs)
+    friend FIRIndex operator* (FIRIndex const & lhs, FIRIndex const & rhs)
     {
-        return operator*(rhs.data);
+        return operator*(lhs, rhs.data);
     }
 
-    FIRIndex & operator* (int rhs)
+    friend FIRIndex operator* (FIRIndex const & lhs, int rhs)
     {
-        return operator*(InstBuilder::genIntNumInst(rhs));
+        return operator*(lhs, InstBuilder::genIntNumInst(rhs));
     }
 
-    FIRIndex & operator/ (ValueInst * rhs)
+
+    friend FIRIndex operator/ (FIRIndex const & lhs, ValueInst * rhs)
     {
-        data = InstBuilder::genDiv(data, rhs);
-        return *this;
+        return FIRIndex(InstBuilder::genAdd(lhs.data, rhs));
     }
 
-    FIRIndex & operator/ (FIRIndex const & rhs)
+    friend FIRIndex operator/ (FIRIndex const & lhs, FIRIndex const & rhs)
     {
-        return operator/(rhs.data);
+        return operator/(lhs, rhs.data);
     }
 
-    FIRIndex & operator/ (int rhs)
+    friend FIRIndex operator/ (FIRIndex const & lhs, int rhs)
     {
-        return operator/(InstBuilder::genIntNumInst(rhs));
+        return operator/(lhs, InstBuilder::genIntNumInst(rhs));
     }
 
 private:

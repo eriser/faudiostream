@@ -37,22 +37,22 @@ public:
 private:
     void compileTop(Tree rootSignal);
     void compileVector(VectorAddress * vec, Tree sig);
-    StatementInst * compileAssignment(Address * vec, Tree sig, FIRIndex index);
+    StatementInst * compileAssignment(Address * vec, Tree sig, FIRIndex const & index);
 
     void compileMultiSignal(Tree rootSignal);
-    ValueInst * compileSample(Tree sig, FIRIndex index);
+    ValueInst * compileSample(Tree sig, FIRIndex const & index);
 
     // signal-specific
-    ValueInst * compileSampleInput(Tree sig, int i, FIRIndex index);
-    ValueInst * compileSampleVectorize(Tree sig, FIRIndex index, Tree arg1, Tree arg2);
-    ValueInst * compileSampleSerialize(Tree sig, FIRIndex index, Tree arg1);
-    ValueInst * compileSamplePrimitive(Tree sig, FIRIndex index);
-    ValueInst * compilePrimitive(Tree sig, FIRIndex index);
+    ValueInst * compileSampleInput(Tree sig, int i, FIRIndex const & index);
+    ValueInst * compileSampleVectorize(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
+    ValueInst * compileSampleSerialize(Tree sig, FIRIndex const & index, Tree arg1);
+    ValueInst * compileSamplePrimitive(Tree sig, FIRIndex const & index);
+    ValueInst * compilePrimitive(Tree sig, FIRIndex const & index);
 
-    ValueInst * compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex index);
+    ValueInst * compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index);
 
-    StatementInst * compileAssignmentVectorize(Address * vec, Tree sig, FIRIndex index, Tree arg1, Tree arg2);
-    StatementInst * compileAssignmentSerialize(Address * vec, Tree sig, FIRIndex index, Tree arg1);
+    StatementInst * compileAssignmentVectorize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
+    StatementInst * compileAssignmentSerialize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1);
 
 
     // helper functions
