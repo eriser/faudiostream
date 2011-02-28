@@ -1305,7 +1305,7 @@ class BasicCloneVisitor : public CloneVisitor {
         virtual Typed* visit(ArrayTyped* typed) { return new ArrayTyped(typed->fType->clone(this), typed->fSize); }
         virtual Typed* visit(StructTyped* typed)
         {
-            return new StructTyped(typed->fName, typed->clone(this));
+            return new StructTyped(typed->fName, typed->fType->clone(this));
         }
 
         virtual Typed* visit(VectorTyped* typed) { return new VectorTyped(dynamic_cast<BasicTyped*>(typed->fType->clone(this)), typed->fSize); }
