@@ -380,19 +380,23 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Addres
                                                                           ValueInst * index, Tree arg1)
 {
     if (!isShared(sig)) {
-        // FIXME: introduce conditional
+        int m = getSigRate(arg1);
+        int n = getSigRate(sig) / getSigRate(arg1);
+
+
         DeclareTypeInst* declareArgType = InstBuilder::genType(getSigType(arg1));
         pushGlobalDeclare(declareArgType);
 
         CastAddress * castedResultAddress = InstBuilder::genCastAddress(vec, declareArgType->fType);
 
-        int m = getSigRate(arg1);
+        ValueInst * condition = InstBuilder::genBinopInst(kEQ,
+                                                        InstBuilder::genBinopInst(kRem, index, InstBuilder::genIntNumInst(n)),
+                                                        InstBuilder::genIntNumInst(n));
 
         ValueInst * indexInSource = InstBuilder::genDiv(index, InstBuilder::genIntNumInst(m));
-
-        return compileAssignment(castedResultAddress, arg1, indexInSource);
-
-        assert(false);
+        BlockInst * thenCase = InstBuilder::genBlockInst();
+        thenCase->pushBackInst(compileAssignment(castedResultAddress, arg1, indexInSource));
+        return InstBuilder::genIfInst(condition, thenCase);
     } else
         return store(vec, compileSampleSerialize(sig, index, arg1));
 }
@@ -418,15 +422,23 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, Valu
 
     fContainer->openLoop(getFreshID("j_"), loopSize);
 
-    // FIXME: add conditional
+    ValueInst * condition = InstBuilder::genBinopInst(kEQ,
+                                                      InstBuilder::genBinopInst(kRem, getCurrentLoopIndex(), InstBuilder::genIntNumInst(n)),
+                                                      InstBuilder::genIntNumInst(n));
+
+
 
     IndexedAddress * destinationAddress = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(),
                                                                          getCurrentLoopIndex());
     CastAddress * castedDestiationAddress = InstBuilder::genCastAddress(destinationAddress, declareArgType->fType);
 
     ValueInst * compileIndex = InstBuilder::genDiv(getCurrentLoopIndex(), InstBuilder::genIntNumInst(n));
+    BlockInst * thenCase = InstBuilder::genBlockInst();
+    thenCase->pushBackInst(compileAssignment(castedDestiationAddress, arg1, compileIndex));
 
-    pushComputeDSPMethod(compileAssignment(castedDestiationAddress, arg1, compileIndex));
+    StatementInst* ifStatement = InstBuilder::genIfInst(condition, thenCase);
+
+    pushComputeDSPMethod(ifStatement);
 
     fContainer->closeLoop();
 }
