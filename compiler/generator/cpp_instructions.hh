@@ -257,8 +257,12 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
 
         virtual void visit(CastAddress* casted)
         {
+            if (gTypeNames.find(casted->fType) == gTypeNames.end())
+               throw std::logic_error("casting to an undeclared type");
+
+            string const & type = gTypeNames[casted->fType];
             string s;
-            Loki::SPrintf(s, "reinterpret_cast<%s>(")(generateType(casted->fType));
+            Loki::SPrintf(s, "reinterpret_cast<%s&>(")(type);
             *fOut << s;
             casted->fAddress->accept(this);
             *fOut << ")";
@@ -499,6 +503,52 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
             tab1(fTab, *fOut);
         }
 
+        map<Typed*, string> gTypeNames;
+        virtual void visit(DeclareTypeInst* inst)
+        {
+            static int index = 0;
+            BasicTyped* basicTyped = dynamic_cast<BasicTyped*>(inst->fType);
+            if (basicTyped) {
+                switch (basicTyped->getType()) {
+                case Typed::kInt:
+                    gTypeNames[basicTyped] = "int";
+                    return;
+
+                case Typed::kFloat:
+                    gTypeNames[basicTyped] = "float";
+                    return;
+
+                case Typed::kDouble:
+                    gTypeNames[basicTyped] = "double";
+                    return;
+
+                case Typed::kQuad:
+                    gTypeNames[basicTyped] = "long double";
+                    return;
+
+                default:
+                    assert(false);
+                }
+            }
+
+            ArrayTyped* arrayTyped = dynamic_cast<ArrayTyped*>(inst->fType);
+
+            if (arrayTyped) {
+                assert(gTypeNames.find(arrayTyped->fType) != gTypeNames.end());
+                string basicType = gTypeNames[arrayTyped->fType];
+
+                stringstream typeName;
+                typeName << "VecType" << index++;
+
+                string code;
+                Loki::SPrintf(code, "typedef %s %s[%d]")(basicType)(typeName.str())(arrayTyped->fSize);
+
+                *fOut << code;
+                EndLine();
+
+                gTypeNames[arrayTyped] = typeName.str();
+            }
+        }
 };
 
 class CPPVecInstVisitor : public CPPInstVisitor {
@@ -804,48 +854,6 @@ class CPPVecAccelerateInstVisitor : public CPPVecInstVisitor {
 
             // TODO
         }
-
-};
-
-class MRCPPInstVisitor : public CPPInstVisitor {
-
-    public:
-
-        MRCPPInstVisitor(std::ostream* out, int tab = 0)
-            :CPPInstVisitor(out, tab)
-        {}
-
-        virtual ~MRCPPInstVisitor()
-        {}
-
-        void visitAddress(IndexedAddress* indexed)
-        {
-            *fOut << "[";
-            indexed->fIndex->accept(this);
-            *fOut << "]";
-        }
-
-        virtual void visit(IndexedAddress* indexed)
-        {
-            visitAddress(indexed);
-        }
-
-        virtual void visit(DeclareTypeInst* inst)
-        {
-            // FIXME declaration of type
-/*            StructTyped* struct_typed = dynamic_cast<StructTyped*>(inst->fType);
-
-            // Check if type is already generated
-            if (struct_typed && gTypeTable.find(struct_typed->fName) == gTypeTable.end()) {
-                Typed* sub_type = struct_typed->fType;
-                *fOut << "struct " << struct_typed->fName << " {" << endl;
-                *fOut << "\t" << generateType(sub_type, "f"); EndLine();
-                *fOut << "}";
-                EndLine();
-                gTypeTable[struct_typed->fName] = struct_typed;
-            }*/
-        }
-
 };
 
 #endif
