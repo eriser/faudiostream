@@ -158,7 +158,7 @@ DeclareTypeInst* InstBuilder::genType(AudioType* type)
         } else if (FaustVectorType* vec = isVectorType(type)) {
             printf("FaustVectorType size %d\n", vec->size());
             DeclareTypeInst* sub_type = genType(vec->dereferenceType());
-            dec_type = genDeclareTypeInst(genStructTyped(getFreshID("vecType"), InstBuilder::genArrayTyped(sub_type->fType, vec->size())));
+            dec_type = genDeclareTypeInst(InstBuilder::genArrayTyped(sub_type->fType, vec->size()));
         } else {
             assert(false);
         }

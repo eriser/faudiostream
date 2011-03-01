@@ -80,7 +80,6 @@ class FIRInstVisitor : public InstVisitor, public StringTypeManager {
             NamedTyped* named_typed = dynamic_cast<NamedTyped*>(type);
             FunTyped* fun_typed = dynamic_cast<FunTyped*>(type);
             ArrayTyped* array_typed = dynamic_cast<ArrayTyped*>(type);
-            VectorTyped* vector_typed = dynamic_cast<VectorTyped*>(type);
 
             if (basic_typed) {
                 return "\"" + fTypeDirectTable[basic_typed->fType] + "\"";
@@ -111,12 +110,6 @@ class FIRInstVisitor : public InstVisitor, public StringTypeManager {
                     assert(false);
                     return "";
                 }
-            } else if (vector_typed) {
-                std::ostringstream num_str;
-                num_str << vector_typed->fSize;
-                return (vector_typed->fSize == 0)
-                    ? "Type<" + fTypeDirectTable[vector_typed->fType->fType] + ">" + "()"
-                    : "VecType<" + fTypeDirectTable[vector_typed->fType->fType] + ">" + "(" + num_str.str() + ")";
             } else {
                 assert(false);
                 return "";
@@ -129,7 +122,6 @@ class FIRInstVisitor : public InstVisitor, public StringTypeManager {
             NamedTyped* named_typed = dynamic_cast<NamedTyped*>(type);
             FunTyped* fun_typed = dynamic_cast<FunTyped*>(type);
             ArrayTyped* array_typed = dynamic_cast<ArrayTyped*>(type);
-            VectorTyped* vector_typed = dynamic_cast<VectorTyped*>(type);
 
             if (basic_typed) {
                 return "\"" + fTypeDirectTable[basic_typed->fType] + "\", " + name;
@@ -162,12 +154,6 @@ class FIRInstVisitor : public InstVisitor, public StringTypeManager {
                     assert(false);
                     return "";
                 }
-            } else if (vector_typed) {
-                std::ostringstream num_str;
-                num_str << vector_typed->fSize;
-                return (vector_typed->fSize == 0)
-                    ? "Type<" + fTypeDirectTable[vector_typed->fType->fType] + ">" + "()"
-                    : "VecType<" + fTypeDirectTable[vector_typed->fType->fType] + ">" + "(" + num_str.str() + ")";
             } else {
                 assert(false);
                 return "";

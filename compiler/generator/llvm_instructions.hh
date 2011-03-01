@@ -475,7 +475,6 @@ class LLVMTypeInstVisitor : public DispatchVisitor, public LLVMTypeHelper {
 
             BasicTyped* basic_typed = dynamic_cast<BasicTyped*>(inst->fTyped);
             ArrayTyped* array_typed = dynamic_cast<ArrayTyped*>(inst->fTyped);
-            VectorTyped* vector_typed = dynamic_cast<VectorTyped*>(inst->fTyped);
 
             if (basic_typed) {
                 fDSPFields.push_back(fTypeMap[basic_typed->fType]);
@@ -486,8 +485,6 @@ class LLVMTypeInstVisitor : public DispatchVisitor, public LLVMTypeHelper {
                 } else {
                     fDSPFields.push_back(ArrayType::get(fTypeMap[Typed::getTypeFromPtr(array_typed->getType())], array_typed->fSize));
                 }
-            } else if (vector_typed) {
-                fDSPFields.push_back(VectorType::get(fTypeMap[vector_typed->fType->fType], vector_typed->fSize));
             }
 
             fDSPFieldsNames[inst->fAddress->getName()] = fDSPFieldsCounter++;
@@ -1005,7 +1002,6 @@ class LLVMInstVisitor : public InstVisitor, public LLVMTypeHelper {
             BasicTyped* basic_typed = dynamic_cast<BasicTyped*>(inst->fTyped);
             NamedTyped* named_typed = dynamic_cast<NamedTyped*>(inst->fTyped);
             ArrayTyped* array_typed = dynamic_cast<ArrayTyped*>(inst->fTyped);
-            VectorTyped* vector_typed = dynamic_cast<VectorTyped*>(inst->fTyped);
 
             if (inst->fAddress->getAccess() & Address::kStruct) {
                 // Not supposed to happen
@@ -1036,8 +1032,6 @@ class LLVMInstVisitor : public InstVisitor, public LLVMTypeHelper {
                     } else {
                         fCurValue = fBuilder->CreateAlloca(ArrayType::get(fTypeMap[Typed::getTypeFromPtr(array_typed->getType())], array_typed->fSize));
                     }
-                } else if (vector_typed) {
-                    fCurValue = fBuilder->CreateAlloca(VectorType::get(fTypeMap[vector_typed->fType->fType], vector_typed->fSize));
                 }
 
                 //fCurValue->dump();
@@ -1063,9 +1057,6 @@ class LLVMInstVisitor : public InstVisitor, public LLVMTypeHelper {
                     } else if (array_typed) {
                         global_var = new GlobalVariable(*fModule, ArrayType::get(fTypeMap[Typed::getTypeFromPtr(array_typed->getType())], array_typed->fSize),
                             false, GlobalValue::PrivateLinkage, 0, inst->fAddress->getName());
-                    } else if (vector_typed) {
-                        // TO CHECK
-                        global_var = new GlobalVariable(*fModule, fTypeMap[vector_typed->getType()], false, GlobalValue::PrivateLinkage, 0, inst->fAddress->getName());
                     }
 
                     // Declaration with a value
@@ -1081,8 +1072,6 @@ class LLVMInstVisitor : public InstVisitor, public LLVMTypeHelper {
                         } else if (array_typed) {
                              global_var->setInitializer(ConstantAggregateZero::get(ArrayType::get(fTypeMap[Typed::getTypeFromPtr(array_typed->getType())],
                                 array_typed->fSize)));
-                        } else if (vector_typed) {
-
                         }
                     }
 

@@ -95,8 +95,6 @@ struct BasicTyped;
 struct NamedTyped;
 struct FunTyped;
 struct ArrayTyped;
-struct StructTyped;
-struct VectorTyped;
 
 struct NamedAddress;
 struct IndexedAddress;
@@ -244,8 +242,6 @@ class CloneVisitor {
         virtual Typed* visit(NamedTyped* type) = 0;
         virtual Typed* visit(FunTyped* type) = 0;
         virtual Typed* visit(ArrayTyped* type) = 0;
-        virtual Typed* visit(StructTyped* type) = 0;
-        virtual Typed* visit(VectorTyped* type) = 0;
 };
 
 // ============================
@@ -506,37 +502,6 @@ struct ArrayTyped : public Typed {
     {}
 
     VarType getType() { return getPtrFromType(fType->getType()); }
-
-    Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
-};
-
-struct StructTyped : public Typed {
-
-    string fName;
-    Typed* fType;
-
-    StructTyped(const string& name, Typed* type)
-        :fName(name), fType(type)
-    {}
-
-    //VarType getType() { return getPtrFromType(fType->getType()); }
-
-    VarType getType() { return kObj_ptr; }
-
-    Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
-};
-
-
-struct VectorTyped : public Typed {
-
-    BasicTyped* fType;
-    int fSize;
-
-    VectorTyped(BasicTyped* type, int size)
-        :fType(type), fSize(size)
-    {}
-
-    VarType getType() { return getVecFromType(fType->getType()); }
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 };
@@ -1200,8 +1165,7 @@ class BasicCloneVisitor : public CloneVisitor {
         }
         virtual StatementInst* visit(DeclareTypeInst* inst)
         {
-            //return new DeclareTypeInst(dynamic_cast<NamedTyped*>(inst->fType->clone(this)));
-            return new DeclareTypeInst(dynamic_cast<StructTyped*>(inst->fType->clone(this)));
+            return new DeclareTypeInst(inst->fType->clone(this));
         }
 
         // Memory
@@ -1303,13 +1267,6 @@ class BasicCloneVisitor : public CloneVisitor {
             return new FunTyped(cloned, dynamic_cast<BasicTyped*>(typed->fResult->clone(this)), typed->fAttribute);
         }
         virtual Typed* visit(ArrayTyped* typed) { return new ArrayTyped(typed->fType->clone(this), typed->fSize); }
-        virtual Typed* visit(StructTyped* typed)
-        {
-            return new StructTyped(typed->fName, typed->fType->clone(this));
-        }
-
-        virtual Typed* visit(VectorTyped* typed) { return new VectorTyped(dynamic_cast<BasicTyped*>(typed->fType->clone(this)), typed->fSize); }
-
 };
 
 // ========================
@@ -1754,9 +1711,7 @@ struct InstBuilder
     static NamedTyped* genNamedTyped(const string& name, Typed::VarType  type) { return new NamedTyped(name, new BasicTyped(type)); }
 
     static FunTyped* genFunTyped(const list<NamedTyped*>& args, BasicTyped* result, FunTyped::FunAttribute attribute = FunTyped::kDefault) { return new FunTyped(args, result, attribute); }
-    static VectorTyped* genVectorTyped(BasicTyped* type, int size) { return new VectorTyped(type, size); }
     static ArrayTyped* genArrayTyped(Typed* type, int size) { return new ArrayTyped(type, size); }
-    static StructTyped* genStructTyped(const string& name, Typed* type) { return new StructTyped(name, type); }
 
     // Addresses
     static NamedAddress* genNamedAddress(const string& name, Address::AccessType access) { return new NamedAddress(name, access); }
