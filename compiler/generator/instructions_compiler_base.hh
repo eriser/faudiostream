@@ -52,6 +52,7 @@ class InstructionsCompilerBase {
 protected:
     CodeContainer* fContainer;
     Tree fUIRoot;
+    std::set<DeclareTypeInst*> fGlobalTypeDeclarations;
 
     property<ValueInst*> fCompileProperty;
     property<string> fVectorProperty;
@@ -86,7 +87,22 @@ protected:
     StatementInst* pushUserInterfaceMethod(StatementInst* inst)     { return fContainer->pushUserInterfaceMethod(inst); }
 
     StatementInst* pushDeclare(StatementInst* inst)                 { return fContainer->pushDeclare(inst); }
-    StatementInst* pushGlobalDeclare(StatementInst* inst)           { return fContainer->pushGlobalDeclare(inst); }
+    StatementInst* pushGlobalDeclare(StatementInst* inst)
+    {
+        /* avoid duplicate type declarations */
+        DeclareTypeInst * declareType = dynamic_cast<DeclareTypeInst*>(inst);
+        if (declareType) {
+            if (fGlobalTypeDeclarations.find(declareType) != fGlobalTypeDeclarations.end())
+                return inst;
+            fGlobalTypeDeclarations.insert(declareType);
+
+            ArrayTyped * declaredArrayType = dynamic_cast<ArrayTyped*>(declareType->fType);
+            if (declaredArrayType)
+                // ensure that the arrayed type is declared
+                pushGlobalDeclare(InstBuilder::genDeclareTypeInst(declaredArrayType->fType));
+        }
+        return fContainer->pushGlobalDeclare(inst);
+    }
     StatementInst* pushExtGlobalDeclare(StatementInst* inst)        { return fContainer->pushExtGlobalDeclare(inst); }
 
     StatementInst* pushComputePreDSPMethod(StatementInst* inst)     { return fContainer->pushComputePreDSPMethod(inst); }
