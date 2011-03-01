@@ -183,6 +183,20 @@ ArrayTyped* InstBuilder::genArrayTyped(Typed* type, int size)
 }
 
 
+typedef map<Typed*, DeclareTypeInst*> TypeDeclarationMapType;
+
+static TypeDeclarationMapType gTypeDeclarationMap;
+
+DeclareTypeInst* InstBuilder::genDeclareTypeInst(Typed* type)
+{
+    if (gTypeDeclarationMap.find(type) != gTypeDeclarationMap.end())
+        return gTypeDeclarationMap[type];
+
+    DeclareTypeInst * ret = new DeclareTypeInst(type);
+    gTypeDeclarationMap[type] = ret;
+    return ret;
+}
+
 /*
 static Typed* sharedTypeToFirType(Tree t)
 {

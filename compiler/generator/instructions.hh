@@ -1573,8 +1573,7 @@ struct InstBuilder
     static DeclareFunInst* genDeclareFunInst(const string& name, FunTyped* typed)
         {return new DeclareFunInst(name, typed);}
 
-    static DeclareTypeInst* genDeclareTypeInst(Typed* type)
-        {return new DeclareTypeInst(type);}
+    static DeclareTypeInst* genDeclareTypeInst(Typed* type);
 
     // Memory
     static LoadVarInst* genLoadVarInst(Address* address, int size = 1) { return new LoadVarInst(address, size); }
