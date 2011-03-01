@@ -1711,7 +1711,7 @@ struct InstBuilder
     static NamedTyped* genNamedTyped(const string& name, Typed::VarType  type) { return new NamedTyped(name, new BasicTyped(type)); }
 
     static FunTyped* genFunTyped(const list<NamedTyped*>& args, BasicTyped* result, FunTyped::FunAttribute attribute = FunTyped::kDefault) { return new FunTyped(args, result, attribute); }
-    static ArrayTyped* genArrayTyped(Typed* type, int size) { return new ArrayTyped(type, size); }
+    static ArrayTyped* genArrayTyped(Typed* type, int size);
 
     // Addresses
     static NamedAddress* genNamedAddress(const string& name, Address::AccessType access) { return new NamedAddress(name, access); }
@@ -1983,8 +1983,6 @@ struct InstBuilder
 
     // Convert a signal type in a Fir type by using an intermediate Tree based implementation to assure type creation unicity.
     static DeclareTypeInst* genType(AudioType* type);
-
-    static Typed* mapFIRType(AudioType* type);
 };
 
 struct FIRIndex

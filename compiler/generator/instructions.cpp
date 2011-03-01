@@ -168,6 +168,21 @@ DeclareTypeInst* InstBuilder::genType(AudioType* type)
     return dec_type;
 }
 
+typedef map<pair<Typed*, int>, ArrayTyped*> ArrayTypedMapType;
+static ArrayTypedMapType gArrayTypedMap;
+
+ArrayTyped* InstBuilder::genArrayTyped(Typed* type, int size)
+{
+    ArrayTypedMapType::const_iterator it = gArrayTypedMap.find(make_pair(type, size));
+    if (it != gArrayTypedMap.end())
+        return it->second;
+
+    ArrayTyped* ret = new ArrayTyped(type, size);
+    gArrayTypedMap[make_pair(type, size)] = ret;
+    return ret;
+}
+
+
 /*
 static Typed* sharedTypeToFirType(Tree t)
 {
