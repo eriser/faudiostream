@@ -40,6 +40,7 @@ void MultirateInstructionsCompiler::compileMultiSignal(Tree L)
     }
     */
     type = InstBuilder::genArrayTyped(InstBuilder::genBasicTyped(Typed::kFloatMacro), 0);
+    pushGlobalDeclare(InstBuilder::genDeclareTypeInst(type));
 
     for (int index = 0; index < fContainer->inputs(); index++) {
         string name1 = subst("fInput$0_ptr", T(index));
@@ -114,7 +115,9 @@ void MultirateInstructionsCompiler::compileVector(VectorAddress * vec, Tree sig)
 
     FIRIndex index = FIRIndex(getCurrentLoopIndex()) * rate + loop_decl->load();
 
-    loop->pushFrontInst(compileAssignment(vec, sig, index));
+    IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(vec, index);
+
+    loop->pushFrontInst(compileAssignment(storeAddress, sig, index));
 
     pushComputeDSPMethod(loop);
 }
@@ -342,8 +345,7 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Addres
         fContainer->openLoop("k", n->fNum);
 
         IndexedAddress * destination = InstBuilder::genIndexedAddress(vec, getCurrentLoopIndex());
-        ValueInst * computeIndex = InstBuilder::genAdd (InstBuilder::genMul(index, n),
-                                                        getCurrentLoopIndex());
+        FIRIndex computeIndex = index * n + getCurrentLoopIndex();
 
         StatementInst * blockInst = compileAssignment(destination, arg1, computeIndex);
 
@@ -366,8 +368,8 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
     pushGlobalDeclare(declareSigType);
     Typed * sigTyped = declareSigType->fType;
 
-    DeclareTypeInst * declareResultBufferType = InstBuilder::genDeclareTypeInst(InstBuilder::genArrayTyped(sigTyped,
-                                                                                                           sigRate * gVecSize));
+    ArrayTyped * resultBufferType = InstBuilder::genArrayTyped(sigTyped, sigRate * gVecSize);
+    DeclareTypeInst * declareResultBufferType = InstBuilder::genDeclareTypeInst(resultBufferType);
     pushGlobalDeclare(declareResultBufferType);
 
     DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), declareResultBufferType->fType);
@@ -382,7 +384,12 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
     StoreVarInst* loop_increment = loop_decl->store(InstBuilder::genAdd(loop_decl->load(), 1));
     ForLoopInst* loop = InstBuilder::genForLoopInst(loop_decl, loop_end, loop_increment);
 
-    IndexedAddress * compileAddress = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(),
+    VectorAddress * resultBufferAddress = InstBuilder::genVectorAddress(declareResultBuffer->getName(),
+                                                                        resultBufferType->fType,
+                                                                        resultBufferType->fSize,
+                                                                        Address::kStack);
+
+    IndexedAddress * compileAddress = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(resultBufferAddress,
                                                                                                     getCurrentLoopIndex()),
                                                                      loop_decl->load());
 
@@ -390,6 +397,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
 
     loop->pushBackInst(compileAssignment(compileAddress, arg1, compileIndex));
 
+    pushComputeDSPMethod(loop);
     fContainer->closeLoop();
 
     IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(), index);
@@ -402,7 +410,6 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Addres
     if (!isShared(sig)) {
         int m = getSigRate(arg1);
         int n = getSigRate(sig) / getSigRate(arg1);
-
 
         DeclareTypeInst* declareArgType = InstBuilder::genType(getSigType(arg1));
         pushGlobalDeclare(declareArgType);
@@ -433,10 +440,10 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
 
     int loopSize = n * m * gVecSize;
 
-    ArrayTyped* resultType = InstBuilder::genArrayTyped(declareSigType->fType, loopSize);
-    pushGlobalDeclare(InstBuilder::genDeclareTypeInst(resultType));
+    ArrayTyped* resultBufferType = InstBuilder::genArrayTyped(declareSigType->fType, loopSize);
+    pushGlobalDeclare(InstBuilder::genDeclareTypeInst(resultBufferType));
 
-    DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultType);
+    DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultBufferType);
 
     pushDeclare(declareResultBuffer);
 
@@ -446,7 +453,13 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
                                                       InstBuilder::genBinopInst(kRem, getCurrentLoopIndex(), InstBuilder::genIntNumInst(n)),
                                                       InstBuilder::genIntNumInst(n));
 
-    IndexedAddress * destinationAddress = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(),
+
+    VectorAddress * resultBufferAddress = InstBuilder::genVectorAddress(declareResultBuffer->getName(),
+                                                                        resultBufferType->fType,
+                                                                        resultBufferType->fSize,
+                                                                        Address::kStack);
+
+    IndexedAddress * destinationAddress = InstBuilder::genIndexedAddress(resultBufferAddress,
                                                                          getCurrentLoopIndex());
     CastAddress * castedDestiationAddress = InstBuilder::genCastAddress(destinationAddress, declareArgType->fType);
 
@@ -459,6 +472,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
     pushComputeDSPMethod(ifStatement);
 
     fContainer->closeLoop();
+
 
     IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(), index);
     return InstBuilder::genLoadVarInst(addressToReturn);
