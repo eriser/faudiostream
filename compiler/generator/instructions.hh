@@ -134,6 +134,7 @@ class InstVisitor {
         virtual void visit(NamedAddress* address) {}
         virtual void visit(IndexedAddress* address) {}
         virtual void visit(CastAddress* address) {}
+        virtual void visit(VectorAddress* address) {}
 
         // Primitives : numbers
         virtual void visit(FloatNumInst* inst) {}
@@ -1716,6 +1717,7 @@ struct InstBuilder
     static NamedAddress* genNamedAddress(const string& name, Address::AccessType access) { return new NamedAddress(name, access); }
     static IndexedAddress* genIndexedAddress(Address* address, ValueInst* index) { return new IndexedAddress(address, index); }
     static CastAddress* genCastAddress(Address * address, Typed * typed) { return new CastAddress(address, typed); }
+    static VectorAddress* genVectorAddress(string name, Typed * typed, int size, Address::AccessType access) { return new VectorAddress(name, typed, size, access); }
 
     // Helper build methods
 

@@ -159,6 +159,14 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
 
         virtual void visit(DeclareVarInst* inst)
         {
+            BasicTyped * basicTyped = dynamic_cast<BasicTyped*>(inst->fTyped);
+            if (basicTyped)
+                declareBasicType(basicTyped); // ensure that it has a type name
+
+            assert(gTypeNames.find(inst->fTyped) != gTypeNames.end());
+
+            string const & typeName = gTypeNames[inst->fTyped];
+
             if (inst->fAddress->getAccess() & Address::kGlobal) {
                 if (gGlobalTable.find(inst->fAddress->getName()) == gGlobalTable.end()) {
                     // If global is not defined
@@ -177,9 +185,9 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
             }
 
             if (inst->fValue) {
-                *fOut << generateType(inst->fTyped, inst->fAddress->getName()) << " = "; inst->fValue->accept(this); EndLine();
+                *fOut << typeName << " " << inst->getName() << " = "; inst->fValue->accept(this); EndLine();
             } else {
-                *fOut << generateType(inst->fTyped, inst->fAddress->getName()); EndLine();
+                *fOut << typeName << " " << inst->getName(); EndLine();
             }
         }
 
@@ -268,6 +276,11 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
             *fOut << ")";
         }
 
+        virtual void visit(VectorAddress* vAddress)
+        {
+            *fOut << vAddress->getName();
+        }
+
         virtual void visit(LoadVarInst* inst)
         {
             NamedAddress* named = dynamic_cast<NamedAddress*>(inst->fAddress);
@@ -309,12 +322,6 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
             if (named) {
                 *fOut << named->getName() << " = ";
             } else if (indexed) {
-                /*
-                *fOut << indexed->getName() << "[";
-                indexed->fAddress->accept(this);
-                *fOut << "] = ";
-                */
-                *fOut << indexed->getName();
                 indexed->accept(this);
                 *fOut << " = ";
             } else if (vector) {
@@ -503,32 +510,42 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
             tab1(fTab, *fOut);
         }
 
+        void declareBasicType(BasicTyped * basicTyped)
+        {
+            switch (basicTyped->getType()) {
+            case Typed::kInt:
+                gTypeNames[basicTyped] = "int";
+                return;
+
+            case Typed::kFloat:
+                gTypeNames[basicTyped] = "float";
+                return;
+
+            case Typed::kDouble:
+                gTypeNames[basicTyped] = "double";
+                return;
+
+            case Typed::kFloatMacro:
+                gTypeNames[basicTyped] = "FAUSTFLOAT";
+                return;
+
+            case Typed::kQuad:
+                gTypeNames[basicTyped] = "long double";
+                return;
+
+            default:
+                assert(false);
+            }
+        }
+
         map<Typed*, string> gTypeNames;
         virtual void visit(DeclareTypeInst* inst)
         {
             static int index = 0;
             BasicTyped* basicTyped = dynamic_cast<BasicTyped*>(inst->fType);
             if (basicTyped) {
-                switch (basicTyped->getType()) {
-                case Typed::kInt:
-                    gTypeNames[basicTyped] = "int";
-                    return;
-
-                case Typed::kFloat:
-                    gTypeNames[basicTyped] = "float";
-                    return;
-
-                case Typed::kDouble:
-                    gTypeNames[basicTyped] = "double";
-                    return;
-
-                case Typed::kQuad:
-                    gTypeNames[basicTyped] = "long double";
-                    return;
-
-                default:
-                    assert(false);
-                }
+                declareBasicType(basicTyped);
+                return;
             }
 
             ArrayTyped* arrayTyped = dynamic_cast<ArrayTyped*>(inst->fType);
@@ -541,8 +558,12 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
                 typeName << "VecType" << index++;
 
                 string code;
-                Loki::SPrintf(code, "typedef %s %s[%d]")(basicType)(typeName.str())(arrayTyped->fSize);
-
+                if (arrayTyped->fSize) {
+                    Loki::SPrintf(code, "typedef %s %s[%d]")(basicType)(typeName.str())(arrayTyped->fSize);
+                } else {
+                    // FIXME: we interprete arrays of size 0 as raw pointer
+                    Loki::SPrintf(code, "typedef %s * %s")(basicType)(typeName.str());
+                }
                 *fOut << code;
                 EndLine();
 
