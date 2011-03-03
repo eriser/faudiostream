@@ -311,7 +311,11 @@ void CodeContainer::generateLocalInputs(BlockInst* loop_code)
     for (int index = 0; index < inputs(); index++) {
         string name1 = subst("fInput$0", T(index));
         string name2 = subst("fInput$0_ptr", T(index));
-        loop_code->pushBackInst(InstBuilder::genStoreStructVar(name1, InstBuilder::genLoadArrayStructAddressVar(name2, InstBuilder::genLoadLoopVar("index"))));
+        ValueInst * indexVal = InstBuilder::genLoadLoopVar("index");
+        if (getInputRate(index) != 1)
+            indexVal = InstBuilder::genMul(indexVal, InstBuilder::genIntNumInst(getInputRate(index)));
+
+        loop_code->pushBackInst(InstBuilder::genStoreStructVar(name1, InstBuilder::genLoadArrayStructAddressVar(name2, indexVal)));
     }
 }
 
@@ -321,7 +325,11 @@ void CodeContainer::generateLocalOutputs(BlockInst* loop_code)
     for (int index = 0; index < outputs(); index++) {
         string name1 = subst("fOutput$0", T(index));
         string name2 = subst("fOutput$0_ptr", T(index));
-        loop_code->pushBackInst(InstBuilder::genStoreStructVar(name1, InstBuilder::genLoadArrayStructAddressVar(name2, InstBuilder::genLoadLoopVar("index"))));
+        ValueInst * indexVal = InstBuilder::genLoadLoopVar("index");
+        if (getInputRate(index) != 1)
+            indexVal = InstBuilder::genMul(indexVal, InstBuilder::genIntNumInst(getInputRate(index)));
+
+        loop_code->pushBackInst(InstBuilder::genStoreStructVar(name1, InstBuilder::genLoadArrayStructAddressVar(name2, indexVal)));
     }
 }
 

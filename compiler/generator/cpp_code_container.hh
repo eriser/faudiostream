@@ -139,7 +139,7 @@ class CPPMRCodeContainer : public CPPCodeContainer {
         void processFIR(void)
         {
             string index = "index";
-            string counter = "count";
+            string counter = fFullCount;
 
             // Define result block
             BlockInst* block_res = InstBuilder::genBlockInst();

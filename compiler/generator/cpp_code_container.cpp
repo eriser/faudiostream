@@ -498,7 +498,9 @@ void CPPWorkStealingCodeContainer::generateCompute(int n)
 // Vector
 CPPMRCodeContainer::CPPMRCodeContainer(const string& name, const string& super, int numInputs, int numOutputs, std::ostream* out)
     : CPPCodeContainer(name, super, numInputs, numOutputs, out)
-{}
+{
+    fFullCount = "fullcount";
+}
 
 void CPPMRCodeContainer::generateCompute(int n)
 {
