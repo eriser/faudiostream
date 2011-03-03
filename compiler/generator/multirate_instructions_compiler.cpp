@@ -376,7 +376,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
 
     pushDeclare(declareResultBuffer);
 
-    fContainer->openLoop(getFreshID("j_"), sigRate * gVecSize);
+    fContainer->openLoop(getFreshID("j_"), sigRate);
 
     DeclareVarInst* loop_decl = InstBuilder::genDecLoopVar(getFreshID("k"), InstBuilder::genBasicTyped(Typed::kInt),
                                                         InstBuilder::genIntNumInst(0));
@@ -438,7 +438,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
     int m = getSigRate(arg1);
     int n = getSigRate(sig) / getSigRate(arg1);
 
-    int loopSize = n * m * gVecSize;
+    int loopSize = n * m;
 
     ArrayTyped* resultBufferType = InstBuilder::genArrayTyped(declareSigType->fType, loopSize);
     pushGlobalDeclare(InstBuilder::genDeclareTypeInst(resultBufferType));
@@ -451,7 +451,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
 
     ValueInst * condition = InstBuilder::genBinopInst(kEQ,
                                                       InstBuilder::genBinopInst(kRem, getCurrentLoopIndex(), InstBuilder::genIntNumInst(n)),
-                                                      InstBuilder::genIntNumInst(n));
+                                                      InstBuilder::genIntNumInst(0));
 
 
     VectorAddress * resultBufferAddress = InstBuilder::genVectorAddress(declareResultBuffer->getName(),
