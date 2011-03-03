@@ -2019,7 +2019,7 @@ struct FIRIndex
 
     friend FIRIndex operator* (FIRIndex const & lhs, ValueInst * rhs)
     {
-        return FIRIndex(InstBuilder::genAdd(lhs.data, rhs));
+        return FIRIndex(InstBuilder::genMul(lhs.data, rhs));
     }
 
     friend FIRIndex operator* (FIRIndex const & lhs, FIRIndex const & rhs)
@@ -2035,7 +2035,7 @@ struct FIRIndex
 
     friend FIRIndex operator/ (FIRIndex const & lhs, ValueInst * rhs)
     {
-        return FIRIndex(InstBuilder::genAdd(lhs.data, rhs));
+        return FIRIndex(InstBuilder::genDiv(lhs.data, rhs));
     }
 
     friend FIRIndex operator/ (FIRIndex const & lhs, FIRIndex const & rhs)
