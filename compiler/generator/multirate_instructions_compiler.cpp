@@ -335,8 +335,8 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Addres
         StoreVarInst* loop_increment = loop_decl->store(InstBuilder::genAdd(loop_decl->load(), 1));
         ForLoopInst* loop = InstBuilder::genForLoopInst(loop_decl, loop_end, loop_increment);
 
-        IndexedAddress * destination = InstBuilder::genIndexedAddress(vec, getCurrentLoopIndex());
-        FIRIndex computeIndex = index * n + getCurrentLoopIndex();
+        IndexedAddress * destination = InstBuilder::genIndexedAddress(vec, loop_decl->load());
+        FIRIndex computeIndex = index * n + loop_decl->load();
 
         StatementInst * blockInst = compileAssignment(destination, arg1, computeIndex);
         loop->pushBackInst(blockInst);
@@ -420,7 +420,7 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Addres
                                                         InstBuilder::genBinopInst(kRem, index, InstBuilder::genIntNumInst(n)),
                                                         InstBuilder::genIntNumInst(0));
 
-        FIRIndex indexInSource = index / m;
+        FIRIndex indexInSource = index / n;
         BlockInst * thenCase = InstBuilder::genBlockInst();
         thenCase->pushBackInst(compileAssignment(castedResultAddress, arg1, indexInSource));
         return InstBuilder::genIfInst(condition, thenCase);
