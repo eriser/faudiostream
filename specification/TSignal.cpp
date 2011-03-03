@@ -32,7 +32,12 @@ void TInput::compileStatement(TBlockStatement* block, TAddress* address, TIndex*
 
 TValue* TInput::compileSample(TIndex* index)
 {
+
+#ifdef ALT_VECTOR
     return MR_LOAD(MR_INDEX_ADDRESS(MR_VECTOR_ADDRESS(subst("input$0", T(fIndex)), getType(), getRate() * gVecSize), index));
+#else
+    return MR_LOAD(MR_INDEX_ADDRESS(MR_VECTOR_ADDRESS(subst("input$0", T(fIndex)), MR_VECTOR_TYPE(getType(), getRate() * gVecSize)), index));
+#endif
 }
 
 void TPrimOp::compileStatement(TBlockStatement* block, TAddress* address, TIndex* index)
@@ -42,17 +47,26 @@ void TPrimOp::compileStatement(TBlockStatement* block, TAddress* address, TIndex
 
 TValue* TPrimOp::compileSample(TIndex* index)
 {
+    // Expression type checking
+    //CHECK_EQUAL_TYPE(fExp1->getType(), fExp2->getType());
+
     // not shared
     if (!gPrim) {
         return MR_OP(fExp1->compileSample(index), fExp2->compileSample(index), fOp);
     } else {
         // shared
-
         int rate = getRate();
         TType* type = getType();
 
         TIndex* var_j = MR_VAR(getFreshID("j"));
+
+    #ifdef ALT_VECTOR
         TVectorAddress* new_out_vec = MR_VECTOR_ADDRESS(getFreshID("BinOp"), type, rate * gVecSize);
+    #else
+        TType* vec_type = MR_VECTOR_TYPE(type, rate * gVecSize);
+        MR_PUSH_BLOCK(gDecBlock, MR_DEC_TYPE(vec_type));
+        TVectorAddress* new_out_vec = MR_VECTOR_ADDRESS(getFreshID("BinOp"), vec_type);
+    #endif
 
         // Internal block
         TBlockStatement* loop_code_block = MR_BLOCK();
@@ -79,7 +93,7 @@ void TVectorize::compileStatement(TBlockStatement* block, TAddress* address, TIn
     TType* type = getType();
 
     // Address type checking
-    CHECK_TYPE(address->getType(), type);
+    CHECK_EQUAL_TYPE(address->getType(), type);
 
     // not shared
     if (!gVec) {
@@ -110,7 +124,13 @@ TValue* TVectorize::compileSample(TIndex* index)
     TType* type = getType();
 
     // Declare output
+#ifdef ALT_VECTOR
     TVectorAddress* new_out_vec = MR_VECTOR_ADDRESS(getFreshID("Vectorize"), type, rate * gVecSize);
+#else
+    TType* vec_type = MR_VECTOR_TYPE(type, rate * gVecSize);
+    MR_PUSH_BLOCK(gDecBlock, MR_DEC_TYPE(vec_type));
+    TVectorAddress* new_out_vec = MR_VECTOR_ADDRESS(getFreshID("Vectorize"), vec_type);
+#endif
 
     // Compute new indexes
     TIndex* var_j = MR_VAR(getFreshID("j"));
@@ -129,7 +149,7 @@ TValue* TVectorize::compileSample(TIndex* index)
     gExternalBlock->fCode.push_back(MR_LOOP(rate * gVecSize, var_j, block));
 
     // Output type checking
-    CHECK_TYPE(type, MR_INDEX_ADDRESS(new_out_vec, index)->getType());
+    CHECK_EQUAL_TYPE(type, MR_INDEX_ADDRESS(new_out_vec, index)->getType());
 
     // Final value
     return MR_LOAD(MR_INDEX_ADDRESS(new_out_vec, index));
@@ -144,7 +164,7 @@ void TSerialize::compileStatement(TBlockStatement* block, TAddress* address, TIn
     TType* type = getType();
 
     // Address type checking
-    CHECK_TYPE(address->getType(), type);
+    CHECK_EQUAL_TYPE(address->getType(), type);
 
     // if not shared
 
@@ -169,7 +189,13 @@ TValue* TSerialize::compileSample(TIndex* index)
     TType* type = getType();
 
     // Declare output
+#ifdef ALT_VECTOR
     TVectorAddress* new_out_vec = MR_VECTOR_ADDRESS(getFreshID("Serialize"), type, rate * gVecSize);
+#else
+    TType* vec_type = MR_VECTOR_TYPE(type, rate * gVecSize);
+    MR_PUSH_BLOCK(gDecBlock, MR_DEC_TYPE(vec_type));
+    TVectorAddress* new_out_vec = MR_VECTOR_ADDRESS(getFreshID("Serialize"), vec_type);
+#endif
 
     // Compute new indexes
     TIndex* var_j = MR_VAR(getFreshID("j"));
@@ -189,7 +215,7 @@ TValue* TSerialize::compileSample(TIndex* index)
     gExternalBlock->fCode.push_back(MR_LOOP(n * m * gVecSize, var_j, sub_block2));
 
     // Output type checking
-    CHECK_TYPE(type, MR_INDEX_ADDRESS(new_out_vec, index)->getType());
+    CHECK_EQUAL_TYPE(type, MR_INDEX_ADDRESS(new_out_vec, index)->getType());
 
     // Final value
     return MR_LOAD(MR_INDEX_ADDRESS(new_out_vec, index));
@@ -215,7 +241,7 @@ void TConcat::compileStatement(TBlockStatement* block, TAddress* address, TIndex
     int size2 = type2->getSize();
 
     // Address type checking
-    CHECK_TYPE(address->getType(), type);
+    CHECK_EQUAL_TYPE(address->getType(), type);
 
     // if not shared
     if (!gConcat) {
@@ -239,7 +265,13 @@ TValue* TConcat::compileSample(TIndex* index)
     int size2 = type2->getSize();
 
     // Declare output
+#ifdef ALT_VECTOR
     TVectorAddress* new_out_vec = MR_VECTOR_ADDRESS(getFreshID("Concat"), type, rate * gVecSize);
+#else
+    TType* vec_type = MR_VECTOR_TYPE(type, rate * gVecSize);
+    MR_PUSH_BLOCK(gDecBlock, MR_DEC_TYPE(vec_type));
+    TVectorAddress* new_out_vec = MR_VECTOR_ADDRESS(getFreshID("Concat"), vec_type);
+#endif
 
     // Compute new indexes
     TIndex* var_j = MR_VAR(getFreshID("j"));
@@ -257,7 +289,7 @@ TValue* TConcat::compileSample(TIndex* index)
     gExternalBlock->fCode.push_back(MR_LOOP(rate * gVecSize, var_j, block));
 
     // Output type checking
-    CHECK_TYPE(type, MR_INDEX_ADDRESS(new_out_vec, index)->getType());
+    CHECK_EQUAL_TYPE(type, MR_INDEX_ADDRESS(new_out_vec, index)->getType());
 
     // Final value
     return MR_LOAD(MR_INDEX_ADDRESS(new_out_vec, index));
@@ -281,7 +313,7 @@ TValue* TVectorAt::compileSample(TIndex* index)
     assert(id && val);
 
     // Output type checking
-    CHECK_TYPE(type, MR_INDEX_ADDRESS(val->fAddress, MR_INT(id->fValue))->getType());
+    CHECK_EQUAL_TYPE(type, MR_INDEX_ADDRESS(val->fAddress, MR_INT(id->fValue))->getType());
 
     return MR_LOAD(MR_INDEX_ADDRESS(val->fAddress, MR_INT(id->fValue)));
 }
@@ -304,7 +336,13 @@ TVectorAddress* TDelayLine::compile()
     // fMaxDelay is small
 
     // Declare output
+#ifdef ALT_VECTOR
     TVectorAddress* new_out_vec = MR_VECTOR_ADDRESS(getFreshID("DelayLine"), type, rate * gVecSize);
+#else
+    TType* vec_type = MR_VECTOR_TYPE(type, rate * gVecSize);
+    MR_PUSH_BLOCK(gDecBlock, MR_DEC_TYPE(vec_type));
+    TVectorAddress* new_out_vec = MR_VECTOR_ADDRESS(getFreshID("DelayLine"), vec_type);
+#endif
 
     // TODO : fill DL
 
@@ -339,7 +377,7 @@ TValue* TDelayAt::compileSample(TIndex* index)
     TIntValue* id = dynamic_cast<TIntValue*>(res2);
 
     // Output type checking
-    CHECK_TYPE(type, MR_INDEX_ADDRESS(new_out_vec, MR_SUB(index, MR_INT(id->fValue)))->getType());
+    CHECK_EQUAL_TYPE(type, MR_INDEX_ADDRESS(new_out_vec, MR_SUB(index, MR_INT(id->fValue)))->getType());
 
     return MR_LOAD(MR_INDEX_ADDRESS(new_out_vec, MR_SUB(index, MR_INT(id->fValue))));
 }
@@ -384,7 +422,15 @@ TValue* TRecGroup::compileSample(TIndex* index)
             if (TRecGroup::gRecProjCompEnv.find(rec_proj) != TRecGroup::gRecProjCompEnv.end()) {
                 new_out_vec = TRecGroup::gRecProjCompEnv[rec_proj];
             } else {
+
+            #ifdef ALT_VECTOR
                 new_out_vec = MR_VECTOR_ADDRESS(rec_proj, type, rate * gVecSize);
+            #else
+                TType* vec_type = MR_VECTOR_TYPE(type, rate * gVecSize);
+                MR_PUSH_BLOCK(gDecBlock, MR_DEC_TYPE(vec_type));
+                new_out_vec = MR_VECTOR_ADDRESS(rec_proj, vec_type);
+            #endif
+
                 MR_PUSH_BLOCK(gDecBlock, MR_DEC(new_out_vec));
                 TRecGroup::gRecProjCompEnv[rec_proj] = new_out_vec;  // Insert compiled projection
                 (*it)->compileStatement(block, MR_INDEX_ADDRESS(new_out_vec, var_j) , var_j);
@@ -397,7 +443,6 @@ TValue* TRecGroup::compileSample(TIndex* index)
 
     return MR_NULL();
 }
-
 
 void TRecProj::compileStatement(TBlockStatement* block, TAddress* address, TIndex* index)
 {
@@ -416,7 +461,7 @@ TValue* TRecProj::compileSample(TIndex* index)
     assert(TRecGroup::gRecProjCompEnv.find(rec_proj) != TRecGroup::gRecProjCompEnv.end());
 
     // Output type checking
-    CHECK_TYPE(type, MR_INDEX_ADDRESS(TRecGroup::gRecProjCompEnv[rec_proj], index)->getType());
+    CHECK_EQUAL_TYPE(type, MR_INDEX_ADDRESS(TRecGroup::gRecProjCompEnv[rec_proj], index)->getType());
 
     return MR_LOAD(MR_INDEX_ADDRESS(TRecGroup::gRecProjCompEnv[rec_proj], index));
 }

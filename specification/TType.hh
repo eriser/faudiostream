@@ -14,7 +14,9 @@ struct TType : public TPrintable
 
 	virtual void generate(ostream* dst, int n) = 0;
     virtual void generateCPP(ostream* dst, int n) = 0;
+    virtual void generateCPPNoAlias(ostream* dst, int n) = 0;
     virtual void generateDef(ostream* dst, int n) = 0;
+    virtual void generateDefNoAlias(ostream* dst, int n) = 0;
 
     virtual int getSize()  = 0;
 
@@ -40,7 +42,9 @@ struct TIntType : public TType
 
 	virtual void generate(ostream* dst, int n) { *dst << "int"; }
     virtual void generateCPP(ostream* dst, int n) { *dst << "int"; }
+    virtual void generateCPPNoAlias(ostream* dst, int n) { *dst << "int"; }
     virtual void generateDef(ostream* dst, int n) {}
+    virtual void generateDefNoAlias(ostream* dst, int n) {}
 
     virtual int getSize() { return 0; }
 
@@ -62,7 +66,9 @@ struct TFloatType : public TType
 
 	virtual void generate(ostream* dst, int n) { *dst << "float"; }
     virtual void generateCPP(ostream* dst, int n) { *dst << "float"; }
+    virtual void generateCPPNoAlias(ostream* dst, int n) { *dst << "float"; }
     virtual void generateDef(ostream* dst, int n) {}
+    virtual void generateDefNoAlias(ostream* dst, int n) {}
 
     virtual int getSize() { return 0; }
 
@@ -85,11 +91,8 @@ struct TVectorType : public TType
     string fDecName;
     bool fGenerated;
 
-    TVectorType(TType* type, int size):fType(type), fSize(size)
-    {
-        fDecName = getFreshID("VecType");
-        fGenerated = false;
-    }
+    TVectorType(TType* type, int size, const string& name):fType(type), fSize(size), fDecName(name), fGenerated(false)
+    {}
 
     virtual ~TVectorType() {}
 
@@ -99,11 +102,16 @@ struct TVectorType : public TType
         *dst  << fDecName;
     }
 
+    virtual void generateCPPNoAlias(ostream* dst, int n)
+    {
+        *dst  << fDecName;
+    }
+
     void generatePoly(ostream* dst, int n, const string& op)
     {
         tab(n+1, *dst); *dst << fDecName << " operator" << op << "(const " << fDecName << "& val)" << " {" << endl;
             tab(n+2, *dst); *dst << "for (int i = 0; i < " << fSize << "; i++) {" << endl;
-                tab(n+3, *dst); *dst << "f[i] " << op << "= val.f[i];" << endl;
+            tab(n+3, *dst); *dst << "f[i] = f[i] " << op << " val.f[i];" << endl;
             tab(n+2, *dst); *dst << "}" << endl;
             tab(n+2, *dst); *dst << "return *this;" << endl;
         tab(n+1, *dst); *dst << "}" << endl;
@@ -113,7 +121,7 @@ struct TVectorType : public TType
     {
         tab(n+1, *dst); *dst << fDecName << " operator" << op << "(float val)" << " {" << endl;
             tab(n+2, *dst); *dst << "for (int i = 0; i < " << fSize << "; i++) {" << endl;
-                tab(n+3, *dst); *dst << "f[i] " << op << "= val;" << endl;
+            tab(n+3, *dst); *dst << "f[i] = f[i] " << op << " val;" << endl;
             tab(n+2, *dst); *dst << "}" << endl;
             tab(n+2, *dst); *dst << "return *this;" << endl;
         tab(n+1, *dst); *dst << "}" << endl;
@@ -122,7 +130,6 @@ struct TVectorType : public TType
     virtual void generateDef(ostream* dst, int n)
     {
         if (!fGenerated) {
-            fType->generateDef(dst, n+1);
             tab(n, *dst);
             *dst << "struct " << fDecName;
             *dst << " {" << endl;
@@ -140,7 +147,19 @@ struct TVectorType : public TType
             generatePolyScalar(dst, n, "*");
             generatePolyScalar(dst, n, "/");
 
-            tab(n, *dst); *dst << "};";
+            tab(n, *dst); *dst << "};" << endl;
+            fGenerated = true;
+        }
+    }
+
+    virtual void generateDefNoAlias(ostream* dst, int n)
+    {
+        if (!fGenerated) {
+            tab(n, *dst);
+            *dst << "typedef ";
+            fType->generateCPPNoAlias(dst, n);
+            *dst << " " << fDecName;
+            *dst << "[" << fSize << "];" << endl;
             fGenerated = true;
         }
     }
@@ -157,6 +176,19 @@ struct TVectorType : public TType
     {
         return fType;
     }
+
+    vector<int> dimensions() const
+    {
+        std::vector<int> ret;
+        ret.push_back(fSize);
+        TVectorType * vt = dynamic_cast<TVectorType*>(fType);
+        if (vt) {
+            vector<int> base = vt->dimensions();
+            ret.insert(ret.end(), base.begin(), base.end());
+        }
+        return ret;
+    }
+
 };
 
 #endif

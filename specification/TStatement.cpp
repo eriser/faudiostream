@@ -1,6 +1,7 @@
 
 #include "TStatement.hh"
 #include "TValue.hh"
+#include "TSyntax.hh"
 
 // Pseudo code generation
 
@@ -67,15 +68,15 @@ void TDeclareStatement::generateCPP(ostream* dst, int n)
     fVector->fType->generateCPP(dst, n);
     *dst << " ";
     *dst << fVector->fName;
+#ifdef ALT_VECTOR
     *dst << "[" << fVector->fSize << "]";
+#endif
     *dst << ";" << endl;
 }
 
 void TDeclareTypeStatement::generateCPP(ostream* dst, int n)
 {
-    tab(n, *dst);
     fType->generateDef(dst, n);
-    *dst << endl;
 }
 
 void TStoreStatement::generateCPP(ostream* dst, int n)
@@ -126,5 +127,155 @@ void TIfStatement::generateCPP(ostream* dst, int n)
     vector<TStatement*>::const_iterator it;
     tab(n, *dst); *dst << "if ("; fIndex->generateCPP(dst, n); *dst << " == 0) {" << endl;
     fCode->generateCPP(dst, n+1);
+    tab(n, *dst); *dst << "}";
+}
+
+// CPP generation no alias
+
+void TDeclareStatement::generateCPPNoAlias(ostream* dst, int n)
+{
+    fVector->fType->generateDefNoAlias(dst, n);
+    fVector->fType->generateCPPNoAlias(dst, n);
+    *dst << " ";
+    *dst << fVector->fName;
+#ifdef ALT_VECTOR
+    *dst << "[" << fVector->fSize << "]";
+#endif
+    *dst << ";" << endl;
+}
+
+void TDeclareTypeStatement::generateCPPNoAlias(ostream* dst, int n)
+{
+    fType->generateDefNoAlias(dst, n);
+}
+
+// Re-generate values with corrected indexing
+TValue* TStoreStatement::generateSubValues(TValue* value, const vector<int>& dim)
+{
+    TLoadValue* load_value = dynamic_cast<TLoadValue*>(value);
+    TPrimOpValue* prim_value = dynamic_cast<TPrimOpValue*>(value);
+
+    if (load_value) {
+        return MR_LOAD(generateSubAddressLoad(load_value->fAddress, dim));
+    } else if (prim_value) {
+        // Here we assume equals types...
+        return MR_OP(generateSubValues(prim_value->fVal1, dim), generateSubValues(prim_value->fVal2, dim), prim_value->fOp);
+    } else {
+        return value;
+    }
+}
+
+// Re-generate address with corrected indexing
+TAddress* TStoreStatement::generateSubAddressStore(TAddress* address, const vector<int>& dim)
+{
+    TAddress* address1 = address;
+    for (int i = 0; i < dim.size(); i++) {
+        string index = subst("w$0", T(i));
+        address1 = MR_INDEX_ADDRESS(address1, MR_VAR(index));
+    }
+
+    /*
+    address1->getType()->generate(&cout, 0);
+    cout << endl;
+    address1->generate(&cout, 0);
+    cout << endl;
+    */
+
+    return MR_INDEX_ADDRESS(address1->getVector(), address1->rewriteIndex(0));
+
+    //return address1->rewriteAddress(MR_VAR("dummy"));
+}
+
+TAddress* TStoreStatement::generateSubAddressLoad(TAddress* address, const vector<int>& dim)
+{
+    TAddress* address1 = address;
+    for (int i = 0; i < dim.size(); i++) {
+        string index = subst("w$0", T(i));
+        address1 = MR_INDEX_ADDRESS(address1, MR_VAR(index));
+    }
+    return address1;
+}
+
+void TStoreStatement::generateSubLoops(ostream* dst, int n, const vector<int>& dim, int deep)
+{
+    if (deep == dim.size()) {
+        tab(n, *dst);
+        // Recompute address with corrected indexing
+        generateSubAddressStore(fAddress, dim)->generateCPPNoAlias(dst, n);
+        *dst << " = ";
+        // Recompute address with corrected indexing
+        generateSubValues(fValue, dim)->generateCPPNoAlias(dst, n);
+        *dst << ";" << endl;
+    } else {
+        tab(n, *dst);
+        string index = subst("w$0", T(deep));
+        *dst << "for (int " << index << " = 0; " << index << " < " << dim[deep] << "; " << index << "++) {" << endl;
+        generateSubLoops(dst, n+1, dim, deep+1);
+        tab(n, *dst);
+        *dst << "}" << endl;
+    }
+}
+
+void TStoreStatement::generateCPPNoAlias(ostream* dst, int n)
+{
+    //CHECK_EQUAL_TYPE(fAddress->getType(), fValue->getType());
+
+    // Operation on "simple" (= float) type
+    if (dynamic_cast<TFloatType*>(fAddress->getType())) {
+        tab(n, *dst);
+        MR_INDEX_ADDRESS(fAddress->getVector(), fAddress->rewriteIndex(0))->generateCPPNoAlias(dst, n);
+
+        //TAddress* address1 = fAddress->rewriteAddress(MR_VAR("dummy"));
+        //address1->generateCPPNoAlias(dst, n);
+
+        *dst << " = ";
+        fValue->generateCPPNoAlias(dst, n);
+        *dst << ";";
+    } else {
+        TVectorType* vec_type = dynamic_cast<TVectorType*>(fAddress->getType());
+        assert(vec_type);
+        generateSubLoops(dst, n, vec_type->dimensions(), 0);
+    }
+}
+
+void TBlockStatement::generateCPPNoAlias(ostream* dst, int n)
+{
+    vector<TStatement*>::const_iterator it;
+    for (it = fCode.begin(); it != fCode.end(); it++) {
+        (*it)->generateCPPNoAlias(dst, n);
+    }
+}
+
+void TLoopStatement::generateCPPNoAlias(ostream* dst, int n)
+{
+    vector<TStatement*>::const_iterator it;
+    tab(n, *dst); *dst << "for (int "; fIndex->generateCPPNoAlias(dst, n);
+        *dst << " = 0; ";
+        fIndex->generateCPPNoAlias(dst, n);
+        *dst << " < " << fSize << "; ";
+        fIndex->generateCPPNoAlias(dst, n);
+        *dst << "++) {" << endl;
+    fCode->generateCPPNoAlias(dst, n+1);
+    tab(n, *dst); *dst << "}" << endl;
+}
+
+void TSubLoopStatement::generateCPPNoAlias(ostream* dst, int n)
+{
+    vector<TStatement*>::const_iterator it;
+    tab(n, *dst); *dst << "for (int "; fIndex->generateCPPNoAlias(dst, n);
+        *dst << " = 0; ";
+        fIndex->generateCPPNoAlias(dst, n);
+        *dst << " < " << fSize << "; ";
+        fIndex->generateCPPNoAlias(dst, n);
+        *dst << "++) {" << endl;
+    fCode->generateCPPNoAlias(dst, n+1);
+    tab(n, *dst); *dst << "}" << endl;
+}
+
+void TIfStatement::generateCPPNoAlias(ostream* dst, int n)
+{
+    vector<TStatement*>::const_iterator it;
+    tab(n, *dst); *dst << "if ("; fIndex->generateCPPNoAlias(dst, n); *dst << " == 0) {" << endl;
+    fCode->generateCPPNoAlias(dst, n+1);
     tab(n, *dst); *dst << "}";
 }

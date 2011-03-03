@@ -8,7 +8,7 @@ T = int | float | [n]T
 N : symbolic name
 
 W : vector
-W : T n N
+W : [n]T N  (or W : T n N)
 
 Id : access indexes
 Id : int | N | Binop(i1, i2)      (with Binop : +,-,*,/)
@@ -139,7 +139,7 @@ CA[O, InX, I] : A x E x Id ==> void
 -------------------------------------------------------------------------------
 CS[InX, I]: E x Id ==> V
 -------------------------------------------------------------------------------
->   Load(InX[I]) (of type int | float)
+>   Load(InX[I]) (of type float)
 
 
 ===============================================================================
@@ -208,7 +208,7 @@ CS[Vectorize(n,E),I] : E x Id ==> V
 +		}
 +	}
 
->	Load(W[j]) (of type [n]T)
+>	Load(W[I]) (of type [n]T)
 
 ===============================================================================
 Serialize(E) : Serialize a signal of vectors
@@ -216,7 +216,7 @@ Serialize(E) : Serialize a signal of vectors
      m = rate(E)
   [n]T = type(E)
 
-   n.m = rate(Serialize(E))
+   n*m = rate(Serialize(E))
      T = type(Serialize(E))
 
 -------------------------------------------------------------------------------

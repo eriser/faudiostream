@@ -131,7 +131,6 @@ TSignal* test12(bool prim, bool vec, bool ser, bool concat)
     return new TSerialize(new TSerialize(new TVectorize(new TVectorize(new TInput(0, 12), 4), 3)));
 }
 
-// Not compatible type  (input ==> float[3])
 TSignal* test13(bool prim, bool vec, bool ser, bool concat)
 {
     gPrim = prim;
@@ -139,7 +138,7 @@ TSignal* test13(bool prim, bool vec, bool ser, bool concat)
     gSer = ser;
     gConcat = concat;
     Display("test13");
-    return new TVectorize(new TSerialize(new TVectorize(new TInput(0, 12), 4)), 3);
+    return new TSerialize(new TVectorize(new TSerialize(new TVectorize(new TInput(0, 12), 4)), 3));
 }
 
 // Not compatible type  (input ==> float[4])
@@ -171,6 +170,18 @@ TSignal* test15bis(bool prim, bool vec, bool ser, bool concat)
     gConcat = concat;
     Display("test15bis");
     return new TPrimOp(new TSerialize(new TVectorize(new TInput(0, 4), 4)), new TSerialize(new TVectorize(new TInput(1, 4), 4)), "+");
+}
+
+TSignal* test15ter(bool prim, bool vec, bool ser, bool concat)
+{
+    gPrim = prim;
+    gVec = vec;
+    gSer = ser;
+    gConcat = concat;
+    Display("test15ter");
+    return new TSerialize(new TSerialize(new TPrimOp(
+        new TVectorize(new TVectorize(new TInput(0, 12), 4), 3),
+        new TVectorize(new TVectorize(new TInput(1, 12), 4), 3), "+")));
 }
 
 TSignal* test16(bool prim, bool vec, bool ser, bool concat)
@@ -249,6 +260,7 @@ int main()
     //compiler.compileTop(test6(true, true, true, true));
 
     //compiler.compileTop(test10(true, true, true, true));
+
     //compiler.compileTop(test11(true, true, true, true));
     //compiler.compileTop(test11(true, false, true, true));
     //compiler.compileTop(test11(true, true, false, true));
@@ -261,6 +273,10 @@ int main()
     //compiler.compileTop(test12(true, false, false, true));
 
     //compiler.compileTop(test13(true, true, true, true));
+    //compiler.compileTop(test13(true, false, true, true));
+    //compiler.compileTop(test13(true, true, false, true));
+    //compiler.compileTop(test13(true, false, false, true));
+
     //compiler.compileTop(test14(true, true, true, true));
 
     //compiler.compileTop(test15(true, true, true, true));
@@ -282,6 +298,11 @@ int main()
     //compiler.compileTop(test15bis(false, false, true, true));
     //compiler.compileTop(test15bis(false, true, false, true));
     //compiler.compileTop(test15bis(false, false, false, true));
+
+    //compiler.compileTop(test15ter(false, true, true, true));
+    //compiler.compileTop(test15ter(false, false, true, true));
+    //compiler.compileTop(test15ter(false, true, false, true));
+    //compiler.compileTop(test15ter(false, false, false, true));
 
     //compiler.compileTop(test16(true, true, true, true));
 

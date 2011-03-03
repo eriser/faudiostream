@@ -23,6 +23,7 @@ struct TNullValue : public TValue
 
     virtual void generate(ostream* dst, int n) { *dst << "NullValue"; }
     virtual void generateCPP(ostream* dst, int n) { *dst << "NullValue"; }
+    virtual void generateCPPNoAlias(ostream* dst, int n) { *dst << "NullValue"; }
 
 };
 
@@ -36,6 +37,7 @@ struct TFloatValue : public TValue
 
     virtual void generate(ostream* dst, int n) { *dst << fValue; }
     virtual void generateCPP(ostream* dst, int n) { *dst << fValue; }
+    virtual void generateCPPNoAlias(ostream* dst, int n) { *dst << fValue; }
 
 };
 
@@ -49,21 +51,7 @@ struct TIntValue : public TValue
 
     virtual void generate(ostream* dst, int n) { *dst << fValue; }
     virtual void generateCPP(ostream* dst, int n) { *dst << fValue; }
-
-};
-
-struct TVarValue : public TValue
-{
-    string fName;
-
-    TVarValue(const string& name):fName(name) {}
-
-    virtual ~TVarValue() {}
-
-	virtual TType* getType() = 0;
-
-    virtual void generate(ostream* dst, int n) { *dst << fName; }
-    virtual void generateCPP(ostream* dst, int n) { *dst << fName; }
+    virtual void generateCPPNoAlias(ostream* dst, int n) { *dst << fValue; }
 
 };
 
@@ -77,6 +65,7 @@ struct TLoadValue : public TValue
 
     virtual void generate(ostream* dst, int n) { fAddress->generate(dst, n); }
     virtual void generateCPP(ostream* dst, int n) { fAddress->generateCPP(dst, n); }
+    virtual void generateCPPNoAlias(ostream* dst, int n) { fAddress->generateCPPNoAlias(dst, n); }
 
 };
 
@@ -92,6 +81,13 @@ struct TPrimOpValue : public TValue
 
     virtual void generate(ostream* dst, int n) { fVal1->generate(dst, n); *dst << " " << fOp << " "; fVal2->generate(dst, n);}
     virtual void generateCPP(ostream* dst, int n) { fVal1->generateCPP(dst, n); *dst << " " << fOp << " "; fVal2->generateCPP(dst, n);}
+    virtual void generateCPPNoAlias(ostream* dst, int n)
+    {
+        // TODO : generate additional nested loops to access complex typed addresses and values
+        fVal1->generateCPPNoAlias(dst, n);
+        *dst << " " << fOp << " ";
+        fVal2->generateCPPNoAlias(dst, n);
+    }
 
 };
 

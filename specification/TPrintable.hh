@@ -15,8 +15,11 @@ struct TPrintable
 
     virtual void generate(ostream* dst, int n) = 0;
     virtual void generateCPP(ostream* dst, int n) = 0;
+    virtual void generateCPPNoAlias(ostream* dst, int n) = 0;
 };
 
+
+//#define ALT_VECTOR 1
 
 #endif
 
