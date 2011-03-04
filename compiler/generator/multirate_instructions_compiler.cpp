@@ -326,7 +326,6 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Addres
     if (!isShared(sig)) {
         IntNumInst * n = InstBuilder::genIntNumInst(tree2int(arg2));
 
-#if 1
         DeclareVarInst* loop_decl = InstBuilder::genDecLoopVar(getFreshID("k"), InstBuilder::genBasicTyped(Typed::kInt),
                                                                InstBuilder::genIntNumInst(0));
         ValueInst* loop_end = InstBuilder::genLessThan(loop_decl->load(), n);
@@ -339,20 +338,8 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Addres
         StatementInst * blockInst = compileAssignment(destination, arg1, computeIndex);
         loop->pushBackInst(blockInst);
         return loop;
-#else
-        fContainer->openLoop("k", n->fNum);
-
-        IndexedAddress * destination = InstBuilder::genIndexedAddress(vec, getCurrentLoopIndex());
-        FIRIndex computeIndex = index * n + getCurrentLoopIndex();
-
-        StatementInst * blockInst = compileAssignment(destination, arg1, computeIndex);
-
-        fContainer->closeLoop();
-#endif
-        return blockInst;
     } else {
-        IndexedAddress * dest = InstBuilder::genIndexedAddress(vec, index);
-        return store(dest, compileSample(sig, index));
+        return store(vec, compileSample(sig, index));
     }
 }
 
