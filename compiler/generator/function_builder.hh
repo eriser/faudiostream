@@ -214,7 +214,7 @@ struct Loop2FunctionBuider : public DispatchVisitor {
                 virtual Address* visit(NamedAddress* address)
                 {
                     if (find(fAddedVarTable.begin(), fAddedVarTable.end(), address->fName) != fAddedVarTable.end()) {
-                        return new NamedAddress(address->fName, Address::kFunArgs, NULL);
+                        return InstBuilder::genNamedAddress(address->fName, Address::kFunArgs, NULL);
                     } else {
                         return BasicCloneVisitor::visit(address);
                     }
