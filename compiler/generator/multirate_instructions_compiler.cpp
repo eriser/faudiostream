@@ -94,15 +94,15 @@ void MultirateInstructionsCompiler::compileTop(Tree rootSignal)
         string outputName;
         Loki::SPrintf(outputName, "fOutput%d")(i);
 
-        VectorAddress * outI = new VectorAddress(outputName, InstBuilder::genBasicTyped(Typed::kFloat),
-                                                 numeric_limits<int>::max(),  // FIXME: pessimise, we cannot know the `count' value at compile-time
-                                                 Address::kFunArgs);          // FIXME: what is the access type?
+        NamedAddress * outI = InstBuilder::genVectorAddress(outputName, InstBuilder::genBasicTyped(Typed::kFloat),
+                                                            0, // arbitrary size
+                                                            Address::kFunArgs); // FIXME: what is the access type?
         compileVector(outI, sig);
     }
 }
 
 
-void MultirateInstructionsCompiler::compileVector(VectorAddress * vec, Tree sig)
+void MultirateInstructionsCompiler::compileVector(NamedAddress * vec, Tree sig)
 {
     int sigRate = getSigRate(sig);
 
@@ -160,10 +160,8 @@ static bool isPrimitive(Tree sig)
         return false;
 }
 
-StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * vec, Tree sig, FIRIndex const & index)
+StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * dest, Tree sig, FIRIndex const & index)
 {
-    IndexedAddress * dest = InstBuilder::genIndexedAddress(vec, index);
-
     int i;
     if (isSigInt(sig, &i))
         return store(dest, compileSample(sig, index));
@@ -177,10 +175,10 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * vec, 
 
     Tree arg1, arg2;
     if (isSigVectorize(sig, arg1, arg2))
-        return compileAssignmentVectorize(vec, sig, index, arg1, arg2);
+        return compileAssignmentVectorize(dest, sig, index, arg1, arg2);
 
     if (isSigSerialize(sig, arg1))
-        return compileAssignmentSerialize(vec, sig, index, arg1);
+        return compileAssignmentSerialize(dest, sig, index, arg1);
 
     if (isPrimitive(sig))
         return store(dest, compileSample(sig, index));
@@ -384,7 +382,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
     StoreVarInst* loop_increment = loop_decl->store(InstBuilder::genAdd(loop_decl->load(), 1));
     ForLoopInst* loop = InstBuilder::genForLoopInst(loop_decl, loop_end, loop_increment);
 
-    VectorAddress * resultBufferAddress = InstBuilder::genVectorAddress(declareResultBuffer->getName(),
+    NamedAddress * resultBufferAddress = InstBuilder::genVectorAddress(declareResultBuffer->getName(),
                                                                         resultBufferType->fType,
                                                                         resultBufferType->fSize,
                                                                         Address::kStack);
@@ -454,7 +452,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
                                                       InstBuilder::genIntNumInst(0));
 
 
-    VectorAddress * resultBufferAddress = InstBuilder::genVectorAddress(declareResultBuffer->getName(),
+    NamedAddress * resultBufferAddress = InstBuilder::genVectorAddress(declareResultBuffer->getName(),
                                                                         resultBufferType->fType,
                                                                         resultBufferType->fSize,
                                                                         Address::kStack);

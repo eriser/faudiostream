@@ -255,6 +255,11 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
             gGlobalTable[inst->fName] = 1;
         }
 
+        virtual void visit(NamedAddress* named)
+        {
+            *fOut << named->getName();
+        }
+
         virtual void visit(IndexedAddress* indexed)
         {
             indexed->fAddress->accept(this);
@@ -276,25 +281,15 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
             *fOut << ")";
         }
 
-        virtual void visit(VectorAddress* vAddress)
-        {
-            *fOut << vAddress->getName();
-        }
-
         virtual void visit(LoadVarInst* inst)
         {
             NamedAddress* named = dynamic_cast<NamedAddress*>(inst->fAddress);
             IndexedAddress* indexed = dynamic_cast<IndexedAddress*>(inst->fAddress);
+            assert(named || indexed);
 
             if (named) {
-                *fOut << named->getName();
+                named->accept(this);
             } else {
-                /*
-                *fOut << indexed->getName() << "[";
-                indexed->fIndex->accept(this);
-                *fOut << "]";
-                */
-                *fOut << indexed->getName();
                 indexed->accept(this);
             }
         }
@@ -317,14 +312,14 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
         {
             NamedAddress* named = dynamic_cast<NamedAddress*>(inst->fAddress);
             IndexedAddress* indexed = dynamic_cast<IndexedAddress*>(inst->fAddress);
-            VectorAddress* vector = dynamic_cast<VectorAddress*>(inst->fAddress);
 
             if (named) {
-                *fOut << named->getName() << " = ";
+                named->accept(this);
+                *fOut << " = ";
             } else if (indexed) {
                 indexed->accept(this);
                 *fOut << " = ";
-            } else if (vector) {
+            } else {
                 throw std::runtime_error("cannot store to vector address");
             }
             inst->fValue->accept(this);

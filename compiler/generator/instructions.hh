@@ -99,7 +99,6 @@ struct ArrayTyped;
 struct NamedAddress;
 struct IndexedAddress;
 struct CastAddress;
-struct VectorAddress;
 
 // Globals
 extern map<string, Typed*> gVarTable;
@@ -134,7 +133,6 @@ class InstVisitor {
         virtual void visit(NamedAddress* address) {}
         virtual void visit(IndexedAddress* address) {}
         virtual void visit(CastAddress* address) {}
-        virtual void visit(VectorAddress* address) {}
 
         // Primitives : numbers
         virtual void visit(FloatNumInst* inst) {}
@@ -199,7 +197,6 @@ class CloneVisitor {
         // Addresses
         virtual Address* visit(NamedAddress* address) = 0;
         virtual Address* visit(IndexedAddress* address) = 0;
-        virtual Address* visit(VectorAddress* address) = 0;
         virtual Address* visit(CastAddress* address) = 0;
 
         // Primitives : numbers
@@ -563,8 +560,16 @@ struct NamedAddress : public Address {
 
     string fName;
     AccessType fAccess;
+    Typed * fTyped;
+
+    NamedAddress(const string& name, AccessType access, Typed * typed)
+        :fName(name), fAccess(access), fTyped(typed)
+    {}
 
     NamedAddress(const string& name, AccessType access)
+#ifdef __GNUC__
+        __attribute__ ((deprecated))
+#endif
         :fName(name), fAccess(access)
     {}
 
@@ -592,27 +597,6 @@ struct IndexedAddress : public Address {
 
     void setName(const string& name) { fAddress->setName(name); }
     string getName() {return fAddress->getName(); }
-
-    Address* clone(CloneVisitor* cloner) { return cloner->visit(this); }
-    void accept(InstVisitor* visitor) { visitor->visit(this); }
-};
-
-struct VectorAddress: public Address
-{
-    string fName;
-    Typed * fType;
-    int fSize;
-    AccessType fAccess;
-
-    VectorAddress (string const & name, Typed * type, int size, Address::AccessType ):
-        fName(name), fType(type), fSize(size)
-    {}
-
-    void setAccess(Address::AccessType type) { fAccess = type; }
-    Address::AccessType getAccess() { return fAccess; }
-
-    void setName(const string& name) { fName = name; }
-    string getName() {return fName; }
 
     Address* clone(CloneVisitor* cloner) { return cloner->visit(this); }
     void accept(InstVisitor* visitor) { visitor->visit(this); }
@@ -1175,9 +1159,8 @@ class BasicCloneVisitor : public CloneVisitor {
         virtual StatementInst* visit(StoreVarInst* inst) { return new StoreVarInst(inst->fAddress->clone(this), inst->fValue->clone(this)); }
 
         // Addresses
-        virtual Address* visit(NamedAddress* address) { return new NamedAddress(address->fName, address->fAccess); }
+        virtual Address* visit(NamedAddress* address) { return new NamedAddress(address->fName, address->fAccess, address->fTyped); }
         virtual Address* visit(IndexedAddress* address) { return new IndexedAddress(address->fAddress->clone(this), address->fIndex->clone(this)); }
-        virtual Address* visit(VectorAddress* address) { return new VectorAddress(address->fName, address->fType->clone(this), address->fSize, address->fAccess); }
         virtual Address* visit(CastAddress* address) { return new CastAddress(address->fAddress->clone(this), address->fType->clone(this)); }
 
         // Primitives : numbers and string
@@ -1714,10 +1697,19 @@ struct InstBuilder
     static ArrayTyped* genArrayTyped(Typed* type, int size);
 
     // Addresses
-    static NamedAddress* genNamedAddress(const string& name, Address::AccessType access) { return new NamedAddress(name, access); }
+    static NamedAddress* genNamedAddress(const string& name, Address::AccessType access)
+#ifdef __GNUC__
+//         __attribute__ ((deprecated))
+#endif
+        { return new NamedAddress(name, access, NULL); }
+    static NamedAddress* genNamedAddress(const string& name, Address::AccessType access, Typed * typed) { return new NamedAddress(name, access, typed); }
+
     static IndexedAddress* genIndexedAddress(Address* address, ValueInst* index) { return new IndexedAddress(address, index); }
     static CastAddress* genCastAddress(Address * address, Typed * typed) { return new CastAddress(address, typed); }
-    static VectorAddress* genVectorAddress(string name, Typed * typed, int size, Address::AccessType access) { return new VectorAddress(name, typed, size, access); }
+    static NamedAddress* genVectorAddress(string name, Typed * typed, int size, Address::AccessType access)
+    {
+        return new NamedAddress(name, access, genArrayTyped(typed, size));
+    }
 
     // Helper build methods
 

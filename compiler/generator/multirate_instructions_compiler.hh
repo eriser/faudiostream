@@ -36,7 +36,7 @@ public:
 
 private:
     void compileTop(Tree rootSignal);
-    void compileVector(VectorAddress * vec, Tree sig);
+    void compileVector(NamedAddress * vec, Tree sig);
     StatementInst * compileAssignment(Address * vec, Tree sig, FIRIndex const & index);
 
     void compileMultiSignal(Tree rootSignal);
