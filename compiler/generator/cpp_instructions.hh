@@ -308,22 +308,68 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
             }
         }
 
+        void acceptAddress(Address * address)
+        {
+            NamedAddress* named = dynamic_cast<NamedAddress*>(address);
+            IndexedAddress* indexed = dynamic_cast<IndexedAddress*>(address);
+            CastAddress* casted = dynamic_cast<CastAddress*>(address);
+
+            if (named)
+                named->accept(this);
+            else if (indexed)
+                indexed->accept(this);
+            else if (casted)
+                casted->accept(this);
+            else
+                throw std::logic_error("internal error");
+        }
+
         virtual void visit(StoreVarInst* inst)
         {
-            NamedAddress* named = dynamic_cast<NamedAddress*>(inst->fAddress);
-            IndexedAddress* indexed = dynamic_cast<IndexedAddress*>(inst->fAddress);
+            vector<int> varDimensions = inst->fAddress->dimensions();
+            LoadVarInst* loadValue = dynamic_cast<LoadVarInst*>(inst->fValue);
 
-            if (named) {
-                named->accept(this);
+#if 0 // FIXME: assertions would be nice, but currently just a subset of the addresses are typed
+            if (loadValue)
+                assert(varDimensions == loadValue->fAddress->dimensions());
+            else
+                assert(varDimensions.empty());
+#endif
+
+            if (varDimensions.empty()) {
+                acceptAddress(inst->fAddress);
                 *fOut << " = ";
-            } else if (indexed) {
-                indexed->accept(this);
-                *fOut << " = ";
+                inst->fValue->accept(this);
+                EndLine();
             } else {
-                throw std::runtime_error("cannot store to vector address");
+                generateAssignmentLoop(inst->fAddress, varDimensions, loadValue);
+                EndLine();
             }
-            inst->fValue->accept(this);
+        }
+
+        void generateAssignmentLoop(Address * address, vector<int> const & dimensions, LoadVarInst * var)
+        {
+            string indexSeries;
+            for (size_t i = 0; i != dimensions.size(); ++i) {
+                string index = string("assignIndex") + T(int(i));
+                indexSeries += "[" + index + "]";
+
+                string currentLoopHead;
+                Loki::SPrintf(currentLoopHead, "for (int %s = 0; %s != %d; ++%s) {")(index)(index)(dimensions[i])(index);
+                *fOut << currentLoopHead;
+                tab1(fTab + i + 1, *fOut);
+            }
+
+            acceptAddress(address);
+            *fOut << indexSeries << " = ";
+            var->accept(this);
+            *fOut << indexSeries;
             EndLine();
+
+            for (size_t i = 0; i != dimensions.size(); ++i) {
+                tab1(fTab + dimensions.size() - i - 1, *fOut);
+                *fOut << "}";
+            }
         }
 
         virtual void visit(FloatNumInst* inst)
