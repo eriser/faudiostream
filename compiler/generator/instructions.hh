@@ -41,6 +41,7 @@ using namespace std;
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <assert.h>
 #include <stdio.h>
 
@@ -435,6 +436,8 @@ struct Typed : public Printable
     }
 
     virtual Typed* clone(CloneVisitor* cloner) = 0;
+
+    virtual std::vector<int> dimensions() const = 0;
 };
 
 struct BasicTyped : public Typed {
@@ -451,6 +454,10 @@ struct BasicTyped : public Typed {
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 
+    std::vector<int> dimensions() const
+    {
+        return std::vector<int>(); // empty vector
+    }
 };
 
 struct NamedTyped : public Typed {
@@ -466,6 +473,10 @@ struct NamedTyped : public Typed {
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 
+    std::vector<int> dimensions() const
+    {
+        return fType->dimensions();
+    }
 };
 
 struct FunTyped : public Typed {
@@ -488,6 +499,11 @@ struct FunTyped : public Typed {
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 
+    std::vector<int> dimensions() const
+    {
+        throw std::logic_error("FunTyped doesn't have the notion of \"dimensions\"");
+        return std::vector<int>();
+    }
 };
 
 struct ArrayTyped : public Typed {
@@ -502,6 +518,13 @@ struct ArrayTyped : public Typed {
     VarType getType() { return getPtrFromType(fType->getType()); }
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
+
+    std::vector<int> dimensions() const
+    {
+        std::vector<int> base = fType->dimensions();
+        base.push_back(fSize);
+        return base;
+    }
 };
 
 // ============
@@ -554,6 +577,8 @@ struct Address : public Printable {
     virtual Address* clone(CloneVisitor* cloner) = 0;
 
     virtual void accept(InstVisitor* visitor) = 0;
+
+    virtual std::vector<int> dimensions() const = 0;
 };
 
 struct NamedAddress : public Address {
@@ -581,6 +606,14 @@ struct NamedAddress : public Address {
 
     Address* clone(CloneVisitor* cloner) { return cloner->visit(this); }
     void accept(InstVisitor* visitor) { visitor->visit(this); }
+
+    virtual std::vector<int> dimensions() const
+    {
+        if (!fTyped)
+            // FIXME: for now assume a scalar
+            return std::vector<int>();
+        return fTyped->dimensions();
+    }
 };
 
 struct IndexedAddress : public Address {
@@ -600,6 +633,13 @@ struct IndexedAddress : public Address {
 
     Address* clone(CloneVisitor* cloner) { return cloner->visit(this); }
     void accept(InstVisitor* visitor) { visitor->visit(this); }
+
+    vector<int> dimensions(void) const
+    {
+        vector<int> base = fAddress->dimensions();
+        base.pop_back();
+        return base;
+    }
 };
 
 struct CastAddress: public Address
@@ -618,6 +658,11 @@ struct CastAddress: public Address
 
     Address* clone(CloneVisitor* cloner) { return cloner->visit(this); }
     void accept(InstVisitor* visitor) { visitor->visit(this); }
+
+    vector<int> dimensions(void) const
+    {
+        return fType->dimensions();
+    }
 };
 
 
