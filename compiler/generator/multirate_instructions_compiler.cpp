@@ -180,6 +180,9 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * dest,
     if (isSigSerialize(sig, arg1))
         return compileAssignmentSerialize(dest, sig, index, arg1);
 
+    if (isSigConcat(sig, arg1, arg2))
+        return compileAssignmentConcat(dest, sig, index, arg1, arg2);
+
     if (isPrimitive(sig))
         return store(dest, compileSample(sig, index));
 
@@ -206,6 +209,9 @@ ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, FIRIndex cons
 
     if (isSigSerialize(sig, arg1))
         return compileSampleSerialize(sig, index, arg1);
+
+    if (isSigConcat(sig, arg1, arg2))
+        return compileSampleConcat(sig, index, arg1, arg2);
 
     if (isPrimitive(sig))
         return compileSamplePrimitive(sig, index);
@@ -458,9 +464,97 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
 
     fContainer->closeLoop();
 
+    IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(), index);
+    return InstBuilder::genLoadVarInst(addressToReturn);
+}
+
+ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2)
+{
+    int rate = getSigRate(sig);
+    assert(getSigRate(sig) == getSigRate(arg1) && getSigRate(sig) == getSigRate(arg2));
+
+    AudioType * resultType = getSigType(sig);
+    AudioType * argType1 = getSigType(arg1);
+    AudioType * argType2 = getSigType(arg2);
+
+    FaustVectorType * vResultType = isVectorType(resultType);
+    FaustVectorType * vArgType1 = isVectorType(argType1);
+    FaustVectorType * vArgType2 = isVectorType(argType2);
+    assert(vResultType && vArgType1 && vArgType2);
+
+    DeclareTypeInst* declareSigType = InstBuilder::genType(resultType);
+    pushGlobalDeclare(declareSigType);
+
+    DeclareTypeInst* declareArgType1 = InstBuilder::genType(argType1);
+    pushGlobalDeclare(declareArgType1);
+
+    DeclareTypeInst* declareArgType2 = InstBuilder::genType(argType2);
+    pushGlobalDeclare(declareArgType2);
+
+    ArrayTyped* resultBufferType = InstBuilder::genArrayTyped(declareSigType->fType, rate * gVecSize);
+    pushGlobalDeclare(InstBuilder::genDeclareTypeInst(resultBufferType));
+
+    DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultBufferType);
+
+    fContainer->openLoop(getFreshID("j_"), rate);
+
+    IndexedAddress * resultAddress1 = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(),
+                                                                                                    getCurrentLoopIndex()),
+                                                                     InstBuilder::genIntNumInst(0));
+    IndexedAddress * resultAddress2 = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(),
+                                                                                                    getCurrentLoopIndex()),
+                                                                     InstBuilder::genIntNumInst(vArgType1->size()));
+
+    CastAddress * castedResultAddress1 = InstBuilder::genCastAddress(resultAddress1, declareArgType1->fType);
+    CastAddress * castedResultAddress2 = InstBuilder::genCastAddress(resultAddress2, declareArgType2->fType);
+
+    compileAssignment(castedResultAddress1, arg1, FIRIndex(getCurrentLoopIndex()));
+    compileAssignment(castedResultAddress2, arg2, FIRIndex(getCurrentLoopIndex()));
+
+    fContainer->closeLoop();
 
     IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(), index);
     return InstBuilder::genLoadVarInst(addressToReturn);
+}
+
+StatementInst * MultirateInstructionsCompiler::compileAssignmentConcat(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2)
+{
+    if (!isShared(sig)) {
+        assert(getSigRate(sig) == getSigRate(arg1) && getSigRate(sig) == getSigRate(arg2));
+
+        AudioType * resultType = getSigType(sig);
+        AudioType * argType1 = getSigType(arg1);
+        AudioType * argType2 = getSigType(arg2);
+
+        FaustVectorType * vResultType = isVectorType(resultType);
+        FaustVectorType * vArgType1 = isVectorType(argType1);
+        FaustVectorType * vArgType2 = isVectorType(argType2);
+        assert(vResultType && vArgType1 && vArgType2);
+
+        DeclareTypeInst* declareSigType = InstBuilder::genType(resultType);
+        pushGlobalDeclare(declareSigType);
+
+        DeclareTypeInst* declareArgType1 = InstBuilder::genType(argType1);
+        pushGlobalDeclare(declareArgType1);
+
+        DeclareTypeInst* declareArgType2 = InstBuilder::genType(argType2);
+        pushGlobalDeclare(declareArgType2);
+
+        IndexedAddress * resultAddress1 = InstBuilder::genIndexedAddress(vec, InstBuilder::genIntNumInst(0));
+        IndexedAddress * resultAddress2 = InstBuilder::genIndexedAddress(vec, InstBuilder::genIntNumInst(vArgType1->size()));
+
+        CastAddress * castedResultAddress1 = InstBuilder::genCastAddress(resultAddress1, declareArgType1->fType);
+        CastAddress * castedResultAddress2 = InstBuilder::genCastAddress(resultAddress2, declareArgType2->fType);
+
+        StatementInst* ca1 = compileAssignment(castedResultAddress1, arg1, index);
+        StatementInst* ca2 = compileAssignment(castedResultAddress2, arg2, index);
+        BlockInst * returnBlock = InstBuilder::genBlockInst();
+        returnBlock->pushBackInst(ca1);
+        returnBlock->pushBackInst(ca2);
+        return returnBlock;
+    } else {
+        return store(vec, compileSampleConcat(sig, index, arg1, arg2));
+    }
 }
 
 
