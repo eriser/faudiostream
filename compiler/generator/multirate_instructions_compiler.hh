@@ -47,6 +47,7 @@ private:
     ValueInst * compileSampleVectorize(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     ValueInst * compileSampleSerialize(Tree sig, FIRIndex const & index, Tree arg1);
     ValueInst * compileSampleConcat(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
+    ValueInst * compileSampleAt(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     ValueInst * compileSamplePrimitive(Tree sig, FIRIndex const & index);
     ValueInst * compilePrimitive(Tree sig, FIRIndex const & index);
 
@@ -55,6 +56,7 @@ private:
     StatementInst * compileAssignmentVectorize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     StatementInst * compileAssignmentSerialize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1);
     StatementInst * compileAssignmentConcat(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
+    StatementInst * compileAssignmentAt(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
 
 
     // helper functions

@@ -183,6 +183,9 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * dest,
     if (isSigConcat(sig, arg1, arg2))
         return compileAssignmentConcat(dest, sig, index, arg1, arg2);
 
+    if (isSigVectorAt(sig, arg1, arg2))
+        return compileAssignmentAt(dest, sig, index, arg1, arg2);
+
     if (isPrimitive(sig))
         return store(dest, compileSample(sig, index));
 
@@ -212,6 +215,9 @@ ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, FIRIndex cons
 
     if (isSigConcat(sig, arg1, arg2))
         return compileSampleConcat(sig, index, arg1, arg2);
+
+    if (isSigVectorAt(sig, arg1, arg2))
+        return compileSampleAt(sig, index, arg1, arg2);
 
     if (isPrimitive(sig))
         return compileSamplePrimitive(sig, index);
@@ -555,6 +561,27 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentConcat(Address *
     } else {
         return store(vec, compileSampleConcat(sig, index, arg1, arg2));
     }
+}
+
+
+StatementInst * MultirateInstructionsCompiler::compileAssignmentAt(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2)
+{
+    return store(vec, compileSampleAt(sig, index, arg1, arg2));
+}
+
+ValueInst * MultirateInstructionsCompiler::compileSampleAt(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2)
+{
+    assert(getSigRate(sig) == getSigRate(arg1) && getSigRate(sig) == getSigRate(arg2));
+    assert(isVectorType(getSigType(arg1)));
+
+    ValueInst * compiledArg1 = compileSample(arg1, index);
+    ValueInst * compiledArg2 = compileSample(arg2, index);
+
+    LoadVarInst * loadArg1 = dynamic_cast<LoadVarInst*>(compiledArg1);
+
+    IndexedAddress * addressToLoad  = InstBuilder::genIndexedAddress(loadArg1->fAddress, compiledArg2);
+
+    return InstBuilder::genLoadVarInst(addressToLoad);
 }
 
 
