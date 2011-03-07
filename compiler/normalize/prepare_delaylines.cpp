@@ -55,7 +55,7 @@ int getMinDelay(Tree delayline)
 
 static void updateMaxDelayProperty(Tree sig, int newMax)
 {
-    int currentMaxDelay = 0;
+    int currentMaxDelay = -1;
 
     Tree currentProperty = sig->getProperty(maxDelayKey);
     if (currentProperty)
@@ -81,6 +81,9 @@ static void mappingFunction(Tree sig)
 {
     Tree delayline, size;
     if (isSigFixDelay(sig, delayline, size)) {
+        Tree dummy;
+        assert (isSigDelayLine(delayline, dummy));
+
         if (isNum(size)) {
             int iSize = tree2int(size);
             updateMinDelayProperty(delayline, iSize);
