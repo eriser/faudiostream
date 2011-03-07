@@ -527,6 +527,11 @@ struct ArrayTyped : public Typed {
     }
 };
 
+inline ArrayTyped * isArrayTyped(Typed * t)
+{
+    return dynamic_cast<ArrayTyped*>(t);
+}
+
 // ============
 //  Addresses
 // ============

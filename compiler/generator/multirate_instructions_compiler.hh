@@ -66,6 +66,9 @@ private:
         return InstBuilder::genLoadStackVar("count");
     }
 
+    DeclareTypeInst * declareSignalType(Tree sig);
+    DeclareTypeInst * declareSignalType(AudioType * type);
+
     ValueInst * fVectorSize;
 };
 

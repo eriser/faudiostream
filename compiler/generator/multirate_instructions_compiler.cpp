@@ -248,12 +248,11 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
             cachedValue = dynamic_cast<DeclareVarInst*>(compiledInstruction);
         } else {
             int rate = getSigRate(sig);
-            AudioType* type = getSigType(sig);
-            DeclareTypeInst* sampleTypeDeclaration = InstBuilder::genType(type);
+
+            DeclareTypeInst* sampleTypeDeclaration = declareSignalType(sig);
             ArrayTyped* sampleArrayType = InstBuilder::genArrayTyped(sampleTypeDeclaration->fType,
                                                                      rate * gVecSize);
 
-            pushGlobalDeclare(sampleTypeDeclaration);
             pushGlobalDeclare(InstBuilder::genDeclareTypeInst(sampleArrayType));
 
             cachedValue = InstBuilder::genDecStackVar(getFreshID("cacheVector"), sampleArrayType);
@@ -360,9 +359,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
     ValueInst * n = InstBuilder::genIntNumInst(tree2int(arg2));
 
     int sigRate = getSigRate(sig);
-    AudioType * sigType = getSigType(sig);
-    DeclareTypeInst * declareSigType = InstBuilder::genType(sigType);
-    pushGlobalDeclare(declareSigType);
+    DeclareTypeInst * declareSigType = declareSignalType(sig);
     Typed * sigTyped = declareSigType->fType;
 
     ArrayTyped * resultBufferType = InstBuilder::genArrayTyped(sigTyped, sigRate * gVecSize);
@@ -405,11 +402,8 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Addres
                                                                           FIRIndex const & index, Tree arg1)
 {
     if (!isShared(sig)) {
-        int m = getSigRate(arg1);
         int n = getSigRate(sig) / getSigRate(arg1);
-
-        DeclareTypeInst* declareArgType = InstBuilder::genType(getSigType(arg1));
-        pushGlobalDeclare(declareArgType);
+        DeclareTypeInst* declareArgType = declareSignalType(arg1);
 
         CastAddress * castedResultAddress = InstBuilder::genCastAddress(vec, declareArgType->fType);
 
@@ -427,10 +421,8 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Addres
 
 ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRIndex const & index, Tree arg1)
 {
-    DeclareTypeInst* declareSigType = InstBuilder::genType(getSigType(sig));
-    DeclareTypeInst* declareArgType = InstBuilder::genType(getSigType(arg1));
-    pushGlobalDeclare(declareSigType);
-    pushGlobalDeclare(declareArgType);
+    DeclareTypeInst* declareSigType = declareSignalType(sig);
+    DeclareTypeInst* declareArgType = declareSignalType(arg1);
 
     int m = getSigRate(arg1);
     int n = getSigRate(sig) / getSigRate(arg1);
@@ -479,23 +471,12 @@ ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRInde
     int rate = getSigRate(sig);
     assert(getSigRate(sig) == getSigRate(arg1) && getSigRate(sig) == getSigRate(arg2));
 
-    AudioType * resultType = getSigType(sig);
-    AudioType * argType1 = getSigType(arg1);
-    AudioType * argType2 = getSigType(arg2);
+    DeclareTypeInst* declareSigType = declareSignalType(sig);
+    DeclareTypeInst* declareArgType1 = declareSignalType(arg1);
+    DeclareTypeInst* declareArgType2 = declareSignalType(arg2);
 
-    FaustVectorType * vResultType = isVectorType(resultType);
-    FaustVectorType * vArgType1 = isVectorType(argType1);
-    FaustVectorType * vArgType2 = isVectorType(argType2);
-    assert(vResultType && vArgType1 && vArgType2);
-
-    DeclareTypeInst* declareSigType = InstBuilder::genType(resultType);
-    pushGlobalDeclare(declareSigType);
-
-    DeclareTypeInst* declareArgType1 = InstBuilder::genType(argType1);
-    pushGlobalDeclare(declareArgType1);
-
-    DeclareTypeInst* declareArgType2 = InstBuilder::genType(argType2);
-    pushGlobalDeclare(declareArgType2);
+    assert(isArrayTyped(declareSigType->fType) && isArrayTyped(declareArgType1->fType) && isArrayTyped(declareArgType2->fType));
+    ArrayTyped * vArgType1 = isArrayTyped(declareArgType1->fType);
 
     ArrayTyped* resultBufferType = InstBuilder::genArrayTyped(declareSigType->fType, rate * gVecSize);
     pushGlobalDeclare(InstBuilder::genDeclareTypeInst(resultBufferType));
@@ -509,7 +490,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRInde
                                                                      InstBuilder::genIntNumInst(0));
     IndexedAddress * resultAddress2 = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(),
                                                                                                     getCurrentLoopIndex()),
-                                                                     InstBuilder::genIntNumInst(vArgType1->size()));
+                                                                     InstBuilder::genIntNumInst(vArgType1->fSize));
 
     CastAddress * castedResultAddress1 = InstBuilder::genCastAddress(resultAddress1, declareArgType1->fType);
     CastAddress * castedResultAddress2 = InstBuilder::genCastAddress(resultAddress2, declareArgType2->fType);
@@ -528,26 +509,15 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentConcat(Address *
     if (!isShared(sig)) {
         assert(getSigRate(sig) == getSigRate(arg1) && getSigRate(sig) == getSigRate(arg2));
 
-        AudioType * resultType = getSigType(sig);
-        AudioType * argType1 = getSigType(arg1);
-        AudioType * argType2 = getSigType(arg2);
+        DeclareTypeInst* declareSigType = declareSignalType(sig);
+        DeclareTypeInst* declareArgType1 = declareSignalType(arg1);
+        DeclareTypeInst* declareArgType2 = declareSignalType(arg2);
 
-        FaustVectorType * vResultType = isVectorType(resultType);
-        FaustVectorType * vArgType1 = isVectorType(argType1);
-        FaustVectorType * vArgType2 = isVectorType(argType2);
-        assert(vResultType && vArgType1 && vArgType2);
-
-        DeclareTypeInst* declareSigType = InstBuilder::genType(resultType);
-        pushGlobalDeclare(declareSigType);
-
-        DeclareTypeInst* declareArgType1 = InstBuilder::genType(argType1);
-        pushGlobalDeclare(declareArgType1);
-
-        DeclareTypeInst* declareArgType2 = InstBuilder::genType(argType2);
-        pushGlobalDeclare(declareArgType2);
+        assert(isArrayTyped(declareSigType->fType) && isArrayTyped(declareArgType1->fType) && isArrayTyped(declareArgType2->fType));
+        ArrayTyped * vArgType1 = isArrayTyped(declareArgType1->fType);
 
         IndexedAddress * resultAddress1 = InstBuilder::genIndexedAddress(vec, InstBuilder::genIntNumInst(0));
-        IndexedAddress * resultAddress2 = InstBuilder::genIndexedAddress(vec, InstBuilder::genIntNumInst(vArgType1->size()));
+        IndexedAddress * resultAddress2 = InstBuilder::genIndexedAddress(vec, InstBuilder::genIntNumInst(vArgType1->fSize));
 
         CastAddress * castedResultAddress1 = InstBuilder::genCastAddress(resultAddress1, declareArgType1->fType);
         CastAddress * castedResultAddress2 = InstBuilder::genCastAddress(resultAddress2, declareArgType2->fType);
@@ -587,4 +557,17 @@ ValueInst * MultirateInstructionsCompiler::compileSampleAt(Tree sig, FIRIndex co
 StatementInst * MultirateInstructionsCompiler::store (Address * address, ValueInst * value)
 {
     return InstBuilder::genStoreVarInst(address, value);
+}
+
+DeclareTypeInst * MultirateInstructionsCompiler::declareSignalType(Tree sig)
+{
+    AudioType * type = getSigType(sig);
+    return declareSignalType(type);
+}
+
+DeclareTypeInst * MultirateInstructionsCompiler::declareSignalType(AudioType * type)
+{
+    DeclareTypeInst* declareType = InstBuilder::genType(type);
+    pushGlobalDeclare(declareType);
+    return declareType;
 }
