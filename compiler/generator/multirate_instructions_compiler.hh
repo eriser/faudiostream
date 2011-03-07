@@ -66,8 +66,9 @@ private:
         return InstBuilder::genLoadStackVar("count");
     }
 
-    DeclareTypeInst * declareSignalType(Tree sig);
-    DeclareTypeInst * declareSignalType(AudioType * type);
+    Typed * declareSignalType(Tree sig);
+    Typed * declareSignalType(AudioType * type);
+    ArrayTyped * declareArrayTyped(Typed * typed, int size);
 
     ForLoopInst* genSubloop(string const & loopSymbol, int lowBound, int highBound);
 

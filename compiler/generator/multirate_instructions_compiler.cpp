@@ -39,8 +39,7 @@ void MultirateInstructionsCompiler::compileMultiSignal(Tree L)
         type = InstBuilder::genArrayTyped(InstBuilder::genBasicTyped(Typed::kFloatMacro), 0);
     }
     */
-    type = InstBuilder::genArrayTyped(InstBuilder::genBasicTyped(Typed::kFloatMacro), 0);
-    pushGlobalDeclare(InstBuilder::genDeclareTypeInst(type));
+    type = declareArrayTyped(InstBuilder::genBasicTyped(Typed::kFloatMacro), 0);
 
     for (int index = 0; index < fContainer->inputs(); index++) {
         string name1 = subst("fInput$0_ptr", T(index));
@@ -242,11 +241,8 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
         } else {
             int rate = getSigRate(sig);
 
-            DeclareTypeInst* sampleTypeDeclaration = declareSignalType(sig);
-            ArrayTyped* sampleArrayType = InstBuilder::genArrayTyped(sampleTypeDeclaration->fType,
-                                                                     rate * gVecSize);
-
-            pushGlobalDeclare(InstBuilder::genDeclareTypeInst(sampleArrayType));
+            Typed * sampleTyped = declareSignalType(sig);
+            ArrayTyped* sampleArrayType = declareArrayTyped(sampleTyped, rate * gVecSize);
 
             cachedValue = InstBuilder::genDecStackVar(getFreshID("cacheVector"), sampleArrayType);
 
@@ -348,14 +344,11 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
     int n = tree2int(arg2);
 
     int sigRate = getSigRate(sig);
-    DeclareTypeInst * declareSigType = declareSignalType(sig);
-    Typed * sigTyped = declareSigType->fType;
+    Typed * sigTyped = declareSignalType(sig);
 
-    ArrayTyped * resultBufferType = InstBuilder::genArrayTyped(sigTyped, sigRate * gVecSize);
-    DeclareTypeInst * declareResultBufferType = InstBuilder::genDeclareTypeInst(resultBufferType);
-    pushGlobalDeclare(declareResultBufferType);
+    ArrayTyped * resultBufferType = declareArrayTyped(sigTyped, sigRate * gVecSize);
 
-    DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), declareResultBufferType->fType);
+    DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultBufferType);
 
     pushDeclare(declareResultBuffer);
 
@@ -388,9 +381,9 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Addres
 {
     if (!isShared(sig)) {
         int n = getSigRate(sig) / getSigRate(arg1);
-        DeclareTypeInst* declareArgType = declareSignalType(arg1);
+        Typed * argType = declareSignalType(arg1);
 
-        CastAddress * castedResultAddress = InstBuilder::genCastAddress(vec, declareArgType->fType);
+        CastAddress * castedResultAddress = InstBuilder::genCastAddress(vec, argType);
 
         ValueInst * condition = InstBuilder::genBinopInst(kEQ,
                                                         InstBuilder::genBinopInst(kRem, index, InstBuilder::genIntNumInst(n)),
@@ -406,19 +399,17 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Addres
 
 ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRIndex const & index, Tree arg1)
 {
-    DeclareTypeInst* declareSigType = declareSignalType(sig);
-    DeclareTypeInst* declareArgType = declareSignalType(arg1);
+    Typed * sigType = declareSignalType(sig);
+    Typed * argType = declareSignalType(arg1);
 
     int m = getSigRate(arg1);
     int n = getSigRate(sig) / getSigRate(arg1);
 
     int loopSize = n * m;
 
-    ArrayTyped* resultBufferType = InstBuilder::genArrayTyped(declareSigType->fType, loopSize);
-    pushGlobalDeclare(InstBuilder::genDeclareTypeInst(resultBufferType));
+    ArrayTyped* resultBufferType = declareArrayTyped(sigType, loopSize);
 
     DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultBufferType);
-
     pushDeclare(declareResultBuffer);
 
     fContainer->openLoop(getFreshID("j_"), loopSize);
@@ -435,7 +426,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
 
     IndexedAddress * destinationAddress = InstBuilder::genIndexedAddress(resultBufferAddress,
                                                                          getCurrentLoopIndex());
-    CastAddress * castedDestiationAddress = InstBuilder::genCastAddress(destinationAddress, declareArgType->fType);
+    CastAddress * castedDestiationAddress = InstBuilder::genCastAddress(destinationAddress, argType);
 
     FIRIndex compileIndex = FIRIndex(getCurrentLoopIndex()) / n;
     BlockInst * thenCase = InstBuilder::genBlockInst();
@@ -456,15 +447,14 @@ ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRInde
     int rate = getSigRate(sig);
     assert(getSigRate(sig) == getSigRate(arg1) && getSigRate(sig) == getSigRate(arg2));
 
-    DeclareTypeInst* declareSigType = declareSignalType(sig);
-    DeclareTypeInst* declareArgType1 = declareSignalType(arg1);
-    DeclareTypeInst* declareArgType2 = declareSignalType(arg2);
+    Typed* sigType = declareSignalType(sig);
+    Typed* argType1 = declareSignalType(arg1);
+    Typed* argType2 = declareSignalType(arg2);
 
-    assert(isArrayTyped(declareSigType->fType) && isArrayTyped(declareArgType1->fType) && isArrayTyped(declareArgType2->fType));
-    ArrayTyped * vArgType1 = isArrayTyped(declareArgType1->fType);
+    assert(isArrayTyped(sigType) && isArrayTyped(argType1) && isArrayTyped(argType2));
+    ArrayTyped * vArgType1 = isArrayTyped(argType1);
 
-    ArrayTyped* resultBufferType = InstBuilder::genArrayTyped(declareSigType->fType, rate * gVecSize);
-    pushGlobalDeclare(InstBuilder::genDeclareTypeInst(resultBufferType));
+    ArrayTyped* resultBufferType = declareArrayTyped(sigType, rate * gVecSize);
 
     DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultBufferType);
 
@@ -477,8 +467,8 @@ ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRInde
                                                                                                     getCurrentLoopIndex()),
                                                                      InstBuilder::genIntNumInst(vArgType1->fSize));
 
-    CastAddress * castedResultAddress1 = InstBuilder::genCastAddress(resultAddress1, declareArgType1->fType);
-    CastAddress * castedResultAddress2 = InstBuilder::genCastAddress(resultAddress2, declareArgType2->fType);
+    CastAddress * castedResultAddress1 = InstBuilder::genCastAddress(resultAddress1, argType1);
+    CastAddress * castedResultAddress2 = InstBuilder::genCastAddress(resultAddress2, argType2);
 
     compileAssignment(castedResultAddress1, arg1, FIRIndex(getCurrentLoopIndex()));
     compileAssignment(castedResultAddress2, arg2, FIRIndex(getCurrentLoopIndex()));
@@ -494,18 +484,18 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentConcat(Address *
     if (!isShared(sig)) {
         assert(getSigRate(sig) == getSigRate(arg1) && getSigRate(sig) == getSigRate(arg2));
 
-        DeclareTypeInst* declareSigType = declareSignalType(sig);
-        DeclareTypeInst* declareArgType1 = declareSignalType(arg1);
-        DeclareTypeInst* declareArgType2 = declareSignalType(arg2);
+        Typed* sigType = declareSignalType(sig);
+        Typed* argType1 = declareSignalType(arg1);
+        Typed* argType2 = declareSignalType(arg2);
 
-        assert(isArrayTyped(declareSigType->fType) && isArrayTyped(declareArgType1->fType) && isArrayTyped(declareArgType2->fType));
-        ArrayTyped * vArgType1 = isArrayTyped(declareArgType1->fType);
+        assert(isArrayTyped(sigType) && isArrayTyped(argType1) && isArrayTyped(argType2));
+        ArrayTyped * vArgType1 = isArrayTyped(argType1);
 
         IndexedAddress * resultAddress1 = InstBuilder::genIndexedAddress(vec, InstBuilder::genIntNumInst(0));
         IndexedAddress * resultAddress2 = InstBuilder::genIndexedAddress(vec, InstBuilder::genIntNumInst(vArgType1->fSize));
 
-        CastAddress * castedResultAddress1 = InstBuilder::genCastAddress(resultAddress1, declareArgType1->fType);
-        CastAddress * castedResultAddress2 = InstBuilder::genCastAddress(resultAddress2, declareArgType2->fType);
+        CastAddress * castedResultAddress1 = InstBuilder::genCastAddress(resultAddress1, argType1);
+        CastAddress * castedResultAddress2 = InstBuilder::genCastAddress(resultAddress2, argType2);
 
         StatementInst* ca1 = compileAssignment(castedResultAddress1, arg1, index);
         StatementInst* ca2 = compileAssignment(castedResultAddress2, arg2, index);
@@ -544,18 +534,27 @@ StatementInst * MultirateInstructionsCompiler::store (Address * address, ValueIn
     return InstBuilder::genStoreVarInst(address, value);
 }
 
-DeclareTypeInst * MultirateInstructionsCompiler::declareSignalType(Tree sig)
+Typed * MultirateInstructionsCompiler::declareSignalType(Tree sig)
 {
     AudioType * type = getSigType(sig);
     return declareSignalType(type);
 }
 
-DeclareTypeInst * MultirateInstructionsCompiler::declareSignalType(AudioType * type)
+Typed * MultirateInstructionsCompiler::declareSignalType(AudioType * type)
 {
     DeclareTypeInst* declareType = InstBuilder::genType(type);
     pushGlobalDeclare(declareType);
-    return declareType;
+    return declareType->fType;
 }
+
+ArrayTyped * MultirateInstructionsCompiler::declareArrayTyped(Typed * typed, int size)
+{
+    ArrayTyped* resultBufferType = InstBuilder::genArrayTyped(typed, size);
+    DeclareTypeInst * ret = InstBuilder::genDeclareTypeInst(resultBufferType);
+    pushGlobalDeclare(ret);
+    return resultBufferType;
+}
+
 
 
 ForLoopInst* MultirateInstructionsCompiler::genSubloop(string const & loopSymbol, int lowBound, int highBound)
