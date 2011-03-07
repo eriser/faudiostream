@@ -571,7 +571,6 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentAt(Address * vec
 
 ValueInst * MultirateInstructionsCompiler::compileSampleAt(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2)
 {
-    assert(getSigRate(sig) == getSigRate(arg1) && getSigRate(sig) == getSigRate(arg2));
     assert(isVectorType(getSigType(arg1)));
 
     ValueInst * compiledArg1 = compileSample(arg1, index);
