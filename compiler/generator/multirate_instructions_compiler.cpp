@@ -26,6 +26,7 @@
 #include "sigtyperules.hh"
 #include "loki/SafeFormat.h"
 
+#include "prepare_delaylines.hh"
 
 void MultirateInstructionsCompiler::compileMultiSignal(Tree L)
 {
@@ -526,6 +527,60 @@ ValueInst * MultirateInstructionsCompiler::compileSampleAt(Tree sig, FIRIndex co
     IndexedAddress * addressToLoad  = InstBuilder::genIndexedAddress(loadArg1->fAddress, compiledArg2);
 
     return InstBuilder::genLoadVarInst(addressToLoad);
+}
+
+
+Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline, Tree arg)
+{
+    static Tree compiledDelayLineProperty = tree(Node("compiledDelayLineProperty"));
+
+    Tree compiledDelayLine = delayline->getProperty(compiledDelayLineProperty);
+
+    if (compiledDelayLine)
+        return (Address*)tree2ptr(compiledDelayLine);
+
+    int sigRate = getSigRate(arg);
+    Typed * sigType = declareSignalType(arg);
+    int maxDelay = getMaxDelay(delayline);
+
+    ArrayTyped * mType = declareArrayTyped(sigType, maxDelay);
+    ArrayTyped * rmType = declareArrayTyped(sigType, sigRate * gVecSize + maxDelay);
+
+    DeclareVarInst * M = InstBuilder::genDecStructVar(getFreshID("M"), mType);
+    DeclareVarInst * RM = InstBuilder::genDecStructVar(getFreshID("RM"), rmType);
+    pushDeclare(M);
+    pushDeclare(RM);
+
+    fContainer->openLoop("j", sigRate);
+
+    ForLoopInst * preloop = genSubloop("j", 0, maxDelay);
+    LoadVarInst * loadM = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(M->getAddress(),
+                                                                                     preloop->loadDeclaration()));
+    StoreVarInst * storeRM = InstBuilder::genStoreVarInst(InstBuilder::genIndexedAddress(RM->getAddress(),
+                                                                                         preloop->loadDeclaration()),
+                                                          loadM);
+    preloop->pushBackInst(storeRM);
+    pushComputePreDSPMethod(preloop);
+
+    Address * address = InstBuilder::genIndexedAddress(RM->fAddress, FIRIndex(getCurrentLoopIndex()) + maxDelay);
+    pushComputeDSPMethod(compileAssignment(address, arg, FIRIndex(getCurrentLoopIndex())));
+
+    ForLoopInst * postloop = genSubloop("j", 0, maxDelay);
+    FIRIndex loadRMIndex = FIRIndex(postloop->loadDeclaration()) + (sigRate * gVecSize);
+    LoadVarInst * loadRM = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(RM->getAddress(),
+                                                                                      loadRMIndex));
+    StoreVarInst * storeM = InstBuilder::genStoreVarInst(InstBuilder::genIndexedAddress(M->getAddress(),
+                                                                                        postloop->loadDeclaration()),
+                                                         loadRM);
+    postloop->pushBackInst(storeM);
+    pushComputePostDSPMethod(postloop);
+
+    fContainer->closeLoop();
+
+    Address * returnAddress = InstBuilder::genIndexedAddress(RM->getAddress(), InstBuilder::genIntNumInst(maxDelay));
+    delayline->setProperty(compiledDelayLineProperty, tree(Node((void*)returnAddress)));
+
+    return returnAddress;
 }
 
 

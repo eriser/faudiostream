@@ -58,6 +58,8 @@ private:
     StatementInst * compileAssignmentConcat(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     StatementInst * compileAssignmentAt(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
 
+    Address * compileDelayline(Tree delayline, Tree arg);
+
 
     // helper functions
     StatementInst * store (Address * address, ValueInst * value);
