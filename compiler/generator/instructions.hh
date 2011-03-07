@@ -2069,6 +2069,20 @@ struct FIRIndex
         return operator+(lhs, InstBuilder::genIntNumInst(rhs));
     }
 
+    friend FIRIndex operator- (FIRIndex const & lhs, ValueInst * rhs)
+    {
+        return FIRIndex(InstBuilder::genSub(lhs.data, rhs));
+    }
+
+    friend FIRIndex operator- (FIRIndex const & lhs, FIRIndex const & rhs)
+    {
+        return operator+(lhs, rhs.data);
+    }
+
+    friend FIRIndex operator- (FIRIndex const & lhs, int rhs)
+    {
+        return operator+(lhs, InstBuilder::genIntNumInst(rhs));
+    }
 
     friend FIRIndex operator* (FIRIndex const & lhs, ValueInst * rhs)
     {

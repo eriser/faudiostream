@@ -25,6 +25,7 @@
 #include "sigrateinference.hh"
 #include "sigtyperules.hh"
 #include "loki/SafeFormat.h"
+#include "ensure.hh"
 
 #include "prepare_delaylines.hh"
 
@@ -182,6 +183,9 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * dest,
     if (isPrimitive(sig))
         return store(dest, compileSample(sig, index));
 
+    if (isSigFixDelay(sig, arg1, arg2))
+        return store(dest, compileSample(sig, index));
+
     throw std::runtime_error("not implemented");
     return NULL;
 }
@@ -214,6 +218,9 @@ ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, FIRIndex cons
 
     if (isPrimitive(sig))
         return compileSamplePrimitive(sig, index);
+
+    if (isSigFixDelay(sig, arg1, arg2))
+        return compileSampleDelay(sig, index, arg1, arg2);
 
     throw std::runtime_error("not implemented");
     return NULL;
@@ -530,8 +537,11 @@ ValueInst * MultirateInstructionsCompiler::compileSampleAt(Tree sig, FIRIndex co
 }
 
 
-Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline, Tree arg)
+Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
 {
+    Tree arg;
+    ensure (isSigDelayLine(delayline, arg));
+
     static Tree compiledDelayLineProperty = tree(Node("compiledDelayLineProperty"));
 
     Tree compiledDelayLine = delayline->getProperty(compiledDelayLineProperty);
@@ -582,6 +592,18 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline, Tree a
 
     return returnAddress;
 }
+
+ValueInst * MultirateInstructionsCompiler::compileSampleDelay(Tree sig, FIRIndex const & index, Tree delayline, Tree delay)
+{
+    IndexedAddress * delayAddress = dynamic_cast<IndexedAddress*>(compileDelayline(delayline));
+    ValueInst * compiledDelayLength = compileSample(delay, index);
+
+    FIRIndex indexInDelayline = index - compiledDelayLength;
+    LoadVarInst * loadDelay = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(delayAddress->fAddress,
+                                                                                         indexInDelayline + delayAddress->fIndex));
+    return loadDelay;
+}
+
 
 
 StatementInst * MultirateInstructionsCompiler::store (Address * address, ValueInst * value)

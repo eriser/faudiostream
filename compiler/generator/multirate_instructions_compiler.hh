@@ -50,6 +50,7 @@ private:
     ValueInst * compileSampleAt(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     ValueInst * compileSamplePrimitive(Tree sig, FIRIndex const & index);
     ValueInst * compilePrimitive(Tree sig, FIRIndex const & index);
+    ValueInst * compileSampleDelay(Tree sig, FIRIndex const & index, Tree delayline, Tree delay);
 
     ValueInst * compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index);
 
@@ -58,8 +59,7 @@ private:
     StatementInst * compileAssignmentConcat(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     StatementInst * compileAssignmentAt(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
 
-    Address * compileDelayline(Tree delayline, Tree arg);
-
+    Address * compileDelayline(Tree delayline);
 
     // helper functions
     StatementInst * store (Address * address, ValueInst * value);
