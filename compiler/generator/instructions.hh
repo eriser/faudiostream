@@ -1802,7 +1802,7 @@ struct InstBuilder
     // Struct variable
     static DeclareVarInst* genDecStructVar(string vname, Typed* type, ValueInst* exp = NULL)
     {
-        return genDeclareVarInst(genNamedAddress(vname, Address::kStruct), type, exp);
+        return genDeclareVarInst(genNamedAddress(vname, Address::kStruct, type), type, exp);
     }
 
     static LoadVarInst* genLoadStructVar(string vname)
