@@ -106,20 +106,13 @@ void MultirateInstructionsCompiler::compileVector(NamedAddress * vec, Tree sig)
 {
     int sigRate = getSigRate(sig);
 
-    ValueInst * rate = InstBuilder::genIntNumInst(sigRate);
+    ForLoopInst * subloop = genSubloop("j", 0, sigRate);
 
-    DeclareVarInst* loop_decl = InstBuilder::genDecLoopVar("j", InstBuilder::genBasicTyped(Typed::kInt), InstBuilder::genIntNumInst(0));
-    ValueInst* loop_end = InstBuilder::genLessThan(loop_decl->load(), rate);
-    StoreVarInst* loop_increment = loop_decl->store(InstBuilder::genAdd(loop_decl->load(), 1));
-    ForLoopInst* loop = InstBuilder::genForLoopInst(loop_decl, loop_end, loop_increment);
-
-    FIRIndex index = FIRIndex(getCurrentLoopIndex()) * rate + loop_decl->load();
-
+    FIRIndex index = FIRIndex(getCurrentLoopIndex()) * sigRate + subloop->loadDeclaration();
     IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(vec, index);
+    subloop->pushFrontInst(compileAssignment(storeAddress, sig, index));
 
-    loop->pushFrontInst(compileAssignment(storeAddress, sig, index));
-
-    pushComputeDSPMethod(loop);
+    pushComputeDSPMethod(subloop);
 }
 
 static bool isPrimitive(Tree sig)
@@ -335,20 +328,16 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Addres
                                                                           FIRIndex const & index, Tree arg1, Tree arg2)
 {
     if (!isShared(sig)) {
-        IntNumInst * n = InstBuilder::genIntNumInst(tree2int(arg2));
+        int n = tree2int(arg2);
 
-        DeclareVarInst* loop_decl = InstBuilder::genDecLoopVar(getFreshID("k"), InstBuilder::genBasicTyped(Typed::kInt),
-                                                               InstBuilder::genIntNumInst(0));
-        ValueInst* loop_end = InstBuilder::genLessThan(loop_decl->load(), n);
-        StoreVarInst* loop_increment = loop_decl->store(InstBuilder::genAdd(loop_decl->load(), 1));
-        ForLoopInst* loop = InstBuilder::genForLoopInst(loop_decl, loop_end, loop_increment);
+        ForLoopInst * subloop = genSubloop("k", 0, n);
 
-        IndexedAddress * destination = InstBuilder::genIndexedAddress(vec, loop_decl->load());
-        FIRIndex computeIndex = index * n + loop_decl->load();
+        IndexedAddress * destination = InstBuilder::genIndexedAddress(vec, subloop->loadDeclaration());
+        FIRIndex computeIndex = index * n + subloop->loadDeclaration();
 
         StatementInst * blockInst = compileAssignment(destination, arg1, computeIndex);
-        loop->pushBackInst(blockInst);
-        return loop;
+        subloop->pushBackInst(blockInst);
+        return subloop;
     } else {
         return store(vec, compileSample(sig, index));
     }
@@ -356,7 +345,7 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Addres
 
 ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2)
 {
-    ValueInst * n = InstBuilder::genIntNumInst(tree2int(arg2));
+    int n = tree2int(arg2);
 
     int sigRate = getSigRate(sig);
     DeclareTypeInst * declareSigType = declareSignalType(sig);
@@ -372,11 +361,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
 
     fContainer->openLoop(getFreshID("j_"), sigRate);
 
-    DeclareVarInst* loop_decl = InstBuilder::genDecLoopVar(getFreshID("k"), InstBuilder::genBasicTyped(Typed::kInt),
-                                                        InstBuilder::genIntNumInst(0));
-    ValueInst* loop_end = InstBuilder::genLessThan(loop_decl->load(), n);
-    StoreVarInst* loop_increment = loop_decl->store(InstBuilder::genAdd(loop_decl->load(), 1));
-    ForLoopInst* loop = InstBuilder::genForLoopInst(loop_decl, loop_end, loop_increment);
+    ForLoopInst * subloop = genSubloop("k", 0, n);
 
     NamedAddress * resultBufferAddress = InstBuilder::genVectorAddress(declareResultBuffer->getName(),
                                                                         resultBufferType->fType,
@@ -385,13 +370,13 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
 
     IndexedAddress * compileAddress = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(resultBufferAddress,
                                                                                                     getCurrentLoopIndex()),
-                                                                     loop_decl->load());
+                                                                     subloop->loadDeclaration());
 
-    FIRIndex compileIndex = FIRIndex(getCurrentLoopIndex()) * n + loop_decl->load();
+    FIRIndex compileIndex = FIRIndex(getCurrentLoopIndex()) * n + subloop->loadDeclaration();
 
-    loop->pushBackInst(compileAssignment(compileAddress, arg1, compileIndex));
+    subloop->pushBackInst(compileAssignment(compileAddress, arg1, compileIndex));
 
-    pushComputeDSPMethod(loop);
+    pushComputeDSPMethod(subloop);
     fContainer->closeLoop();
 
     IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(), index);
@@ -570,4 +555,15 @@ DeclareTypeInst * MultirateInstructionsCompiler::declareSignalType(AudioType * t
     DeclareTypeInst* declareType = InstBuilder::genType(type);
     pushGlobalDeclare(declareType);
     return declareType;
+}
+
+
+ForLoopInst* MultirateInstructionsCompiler::genSubloop(string const & loopSymbol, int lowBound, int highBound)
+{
+    DeclareVarInst* loop_decl = InstBuilder::genDecLoopVar(getFreshID(loopSymbol), InstBuilder::genBasicTyped(Typed::kInt),
+                                                        InstBuilder::genIntNumInst(lowBound));
+    ValueInst* loop_end = InstBuilder::genLessThan(loop_decl->load(), InstBuilder::genIntNumInst(highBound));
+    StoreVarInst* loop_increment = loop_decl->store(InstBuilder::genAdd(loop_decl->load(), 1));
+    ForLoopInst* loop = InstBuilder::genForLoopInst(loop_decl, loop_end, loop_increment);
+    return loop;
 }

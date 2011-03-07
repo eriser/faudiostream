@@ -1158,6 +1158,13 @@ struct ForLoopInst : public StatementInst
     void accept(InstVisitor* visitor) { visitor->visit(this); }
 
     StatementInst* clone(CloneVisitor* cloner) { return cloner->visit(this); }
+
+    ValueInst * loadDeclaration(void)
+    {
+        DeclareVarInst * declaration = dynamic_cast<DeclareVarInst*>(fInit);
+        assert(declaration);
+        return declaration->load();
+    }
 };
 
 struct WhileLoopInst : public StatementInst

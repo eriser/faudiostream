@@ -69,6 +69,8 @@ private:
     DeclareTypeInst * declareSignalType(Tree sig);
     DeclareTypeInst * declareSignalType(AudioType * type);
 
+    ForLoopInst* genSubloop(string const & loopSymbol, int lowBound, int highBound);
+
     ValueInst * fVectorSize;
 };
 
