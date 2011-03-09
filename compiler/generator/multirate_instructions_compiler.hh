@@ -60,6 +60,7 @@ private:
     StatementInst * compileAssignmentAt(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
 
     Address * compileDelayline(Tree delayline);
+    Address * declareDelayLine(Tree delayline);
 
     // helper functions
     StatementInst * store (Address * address, ValueInst * value);

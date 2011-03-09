@@ -536,19 +536,17 @@ ValueInst * MultirateInstructionsCompiler::compileSampleAt(Tree sig, FIRIndex co
     return InstBuilder::genLoadVarInst(addressToLoad);
 }
 
-
-Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
+Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
 {
     Tree arg;
     ensure (isSigDelayLine(delayline, arg));
 
-    static Tree compiledDelayLineProperty = tree(Node("compiledDelayLineProperty"));
+    static Tree declaredDelayLineProperty = tree(Node("declaredDelayLineProperty"));
+    Tree declaredDelayLine = delayline->getProperty(declaredDelayLineProperty);
+    if (declaredDelayLine)
+        return (Address*)tree2ptr(declaredDelayLine);
 
-    Tree compiledDelayLine = delayline->getProperty(compiledDelayLineProperty);
-
-    if (compiledDelayLine)
-        return (Address*)tree2ptr(compiledDelayLine);
-
+    // if small
     int sigRate = getSigRate(arg);
     Typed * sigType = declareSignalType(arg);
     int maxDelay = getMaxDelay(delayline);
@@ -560,6 +558,41 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     DeclareVarInst * RM = InstBuilder::genDecStructVar(getFreshID("RM"), rmType);
     pushDeclare(M);
     pushDeclare(RM);
+
+    static Tree declareM = tree(Node("declareM"));
+    static Tree declareRM = tree(Node("declareRM"));
+
+    delayline->setProperty(declareM, tree(Node((void*)M)));
+    delayline->setProperty(declareRM, tree(Node((void*)RM)));
+    Address * returnAddress = InstBuilder::genIndexedAddress(RM->getAddress(), InstBuilder::genIntNumInst(maxDelay));
+    delayline->setProperty(declaredDelayLineProperty, tree(Node((void*)returnAddress)));
+
+    // TODO: clear buffers
+
+
+    return returnAddress;
+}
+
+Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
+{
+    Tree arg;
+    ensure (isSigDelayLine(delayline, arg));
+
+    static Tree compiledDelayLineProperty = tree(Node("compiledDelayLineProperty"));
+
+    Tree compiledDelayLine = delayline->getProperty(compiledDelayLineProperty);
+    if (compiledDelayLine)
+        return (Address*)tree2ptr(compiledDelayLine);
+
+    Address * delayLineAddress = declareDelayLine(delayline);
+    static Tree declareM = tree(Node("declareM"));
+    static Tree declareRM = tree(Node("declareRM"));
+
+    int sigRate = getSigRate(arg);
+    int maxDelay = getMaxDelay(delayline);
+
+    DeclareVarInst * M  = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareM));
+    DeclareVarInst * RM = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareRM));
 
     fContainer->openLoop("j", sigRate);
 
@@ -587,10 +620,9 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
 
     fContainer->closeLoop();
 
-    Address * returnAddress = InstBuilder::genIndexedAddress(RM->getAddress(), InstBuilder::genIntNumInst(maxDelay));
-    delayline->setProperty(compiledDelayLineProperty, tree(Node((void*)returnAddress)));
+    delayline->setProperty(compiledDelayLineProperty, tree(Node((void*)delayLineAddress)));
 
-    return returnAddress;
+    return delayLineAddress;
 }
 
 ValueInst * MultirateInstructionsCompiler::compileSampleDelay(Tree sig, FIRIndex const & index, Tree delayline, Tree delay)
