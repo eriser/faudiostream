@@ -155,7 +155,7 @@ class CodeLoop {
 
         void addRecDependency(Tree t);  ///< Check for a recursive dependecy and add it if needed
         bool findRecDefinition(Tree t); ///< indicates a dependency with an enclosing loop
-        void addBackwardDependency(CodeLoop* ls)  { fBackwardLoopDependencies.insert(ls); }
+        void addBackwardDependency(CodeLoop* ls)  { if (ls != this) fBackwardLoopDependencies.insert(ls); }
 
         static void sortGraph(CodeLoop* root, lclgraph& V);
 

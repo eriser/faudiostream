@@ -639,6 +639,12 @@ ValueInst * MultirateInstructionsCompiler::compileSampleDelay(Tree sig, FIRIndex
     FIRIndex indexInDelayline = index - compiledDelayLength;
     LoadVarInst * loadDelay = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(delayAddress->fAddress,
                                                                                          indexInDelayline + delayAddress->fIndex));
+
+    // set loop dependency explicitly
+    CodeLoop * delaylineLoop;
+    ensure (getLoopProperty(delayline, delaylineLoop));
+    fContainer->getCurLoop()->addBackwardDependency(delaylineLoop);
+
     return loadDelay;
 }
 
