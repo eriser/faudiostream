@@ -593,7 +593,9 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     DeclareVarInst * M  = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareM));
     DeclareVarInst * RM = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareRM));
 
+    fContainer->openLoop("delStoreIndex", maxDelay);
     fContainer->openLoop("j", sigRate);
+    CodeLoop * delayWriteLoop = fContainer->getCurLoop();
 
     ForLoopInst * preloop = genSubloop("j", 0, maxDelay);
     LoadVarInst * loadM = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(M->getAddress(),
@@ -607,18 +609,23 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     Address * address = InstBuilder::genIndexedAddress(RM->fAddress, FIRIndex(getCurrentLoopIndex()) + maxDelay);
     pushComputeDSPMethod(compileAssignment(address, arg, getCurrentLoopIndex()));
 
-    ForLoopInst * postloop = genSubloop("j", 0, maxDelay);
-    FIRIndex loadRMIndex = FIRIndex(postloop->loadDeclaration()) + (sigRate * gVecSize);
+    fContainer->closeLoop();
+
+    ForLoopInst * writeBackLoop = genSubloop("j", 0, maxDelay);
+    FIRIndex loadRMIndex = FIRIndex(writeBackLoop->loadDeclaration()) + (sigRate * gVecSize);
     LoadVarInst * loadRM = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(RM->getAddress(),
                                                                                       loadRMIndex));
     StoreVarInst * storeM = InstBuilder::genStoreVarInst(InstBuilder::genIndexedAddress(M->getAddress(),
-                                                                                        postloop->loadDeclaration()),
+                                                                                        writeBackLoop->loadDeclaration()),
                                                          loadRM);
-    postloop->pushBackInst(storeM);
-    pushComputePostDSPMethod(postloop);
+    writeBackLoop->pushBackInst(storeM);
+
+    // FIXME: we pack the writeback loop into a subloop in order to avoid the rate to be taken into account
+    pushComputePostDSPMethod(writeBackLoop);
 
     fContainer->closeLoop();
 
+    setLoopProperty(delayline, delayWriteLoop);
     delayline->setProperty(compiledDelayLineProperty, tree(Node((void*)delayLineAddress)));
 
     return delayLineAddress;
