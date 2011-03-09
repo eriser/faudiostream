@@ -55,7 +55,8 @@ bool  isSigInput(Tree t, int* i) 					{ Tree x; return isTree(t, SIGINPUT, x) &&
 Sym SIGDELAY1 = symbol ("sigDelay1");
 Tree  sigDelay0(Tree t0, Tree box)					{ return sigFixDelay(t0, sigInt(0, box), box);}
 
-Tree  sigDelay1(Tree t0, Tree box)					{ return tree(SIGDELAY1, t0)->setProperty(box_symbol, box); 		}
+// FIXME: we don't generate SIGDELAY1 any more, so pretty printing like s' is broken
+Tree  sigDelay1(Tree t0, Tree box)					{ return sigFixDelay(t0, sigInt(1, box), box); }
 bool  isSigDelay1(Tree t, Tree& t0)					{ return isTree(t, SIGDELAY1, t0); 	}
 
 Sym SIGDELAYLINE = symbol ("sigDelayLine");
