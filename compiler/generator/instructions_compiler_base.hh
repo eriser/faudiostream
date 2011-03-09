@@ -153,9 +153,9 @@ protected:
     void generateMacroInterfaceElements(const string& pathname, Tree elements);
     void generateWidgetMacro(const string& pathname, Tree fulllabel, Tree varname, Tree sig);
 
-    ValueInst * getCurrentLoopIndex(void)
+    FIRIndex getCurrentLoopIndex(void)
     {
-        return fContainer->getCurLoop()->getLoopIndex();
+        return FIRIndex(fContainer->getCurLoop()->getLoopIndex());
     }
 
 public:

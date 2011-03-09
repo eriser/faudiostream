@@ -109,7 +109,7 @@ void MultirateInstructionsCompiler::compileVector(NamedAddress * vec, Tree sig)
 
     ForLoopInst * subloop = genSubloop("j", 0, sigRate);
 
-    FIRIndex index = FIRIndex(getCurrentLoopIndex()) * sigRate + subloop->loadDeclaration();
+    FIRIndex index = getCurrentLoopIndex() * sigRate + subloop->loadDeclaration();
     IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(vec, index);
     subloop->pushFrontInst(compileAssignment(storeAddress, sig, index));
 
@@ -373,7 +373,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
                                                                                                     getCurrentLoopIndex()),
                                                                      subloop->loadDeclaration());
 
-    FIRIndex compileIndex = FIRIndex(getCurrentLoopIndex()) * n + subloop->loadDeclaration();
+    FIRIndex compileIndex = getCurrentLoopIndex() * n + subloop->loadDeclaration();
 
     subloop->pushBackInst(compileAssignment(compileAddress, arg1, compileIndex));
 
@@ -436,7 +436,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
                                                                          getCurrentLoopIndex());
     CastAddress * castedDestiationAddress = InstBuilder::genCastAddress(destinationAddress, argType);
 
-    FIRIndex compileIndex = FIRIndex(getCurrentLoopIndex()) / n;
+    FIRIndex compileIndex = getCurrentLoopIndex() / n;
     BlockInst * thenCase = InstBuilder::genBlockInst();
     thenCase->pushBackInst(compileAssignment(castedDestiationAddress, arg1, compileIndex));
 
@@ -478,8 +478,8 @@ ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRInde
     CastAddress * castedResultAddress1 = InstBuilder::genCastAddress(resultAddress1, argType1);
     CastAddress * castedResultAddress2 = InstBuilder::genCastAddress(resultAddress2, argType2);
 
-    compileAssignment(castedResultAddress1, arg1, FIRIndex(getCurrentLoopIndex()));
-    compileAssignment(castedResultAddress2, arg2, FIRIndex(getCurrentLoopIndex()));
+    compileAssignment(castedResultAddress1, arg1, getCurrentLoopIndex());
+    compileAssignment(castedResultAddress2, arg2, getCurrentLoopIndex());
 
     fContainer->closeLoop();
 
@@ -606,7 +606,7 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     pushComputePreDSPMethod(preloop);
 
     Address * address = InstBuilder::genIndexedAddress(RM->fAddress, FIRIndex(getCurrentLoopIndex()) + maxDelay);
-    pushComputeDSPMethod(compileAssignment(address, arg, FIRIndex(getCurrentLoopIndex())));
+    pushComputeDSPMethod(compileAssignment(address, arg, getCurrentLoopIndex()));
 
     ForLoopInst * postloop = genSubloop("j", 0, maxDelay);
     FIRIndex loadRMIndex = FIRIndex(postloop->loadDeclaration()) + (sigRate * gVecSize);
