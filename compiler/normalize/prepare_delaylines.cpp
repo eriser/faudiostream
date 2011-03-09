@@ -104,6 +104,8 @@ void delaylineAnnotation (Tree root)
     vector<Tree> vsigs;
     getSubSignals (root, vsigs);
 
-    for (vector<Tree>::iterator it = vsigs.begin(); it != vsigs.end(); ++it)
-        delaylineAnnotation(*it);
+    for (vector<Tree>::iterator it = vsigs.begin(); it != vsigs.end(); ++it) {
+        if ((*it)->getProperty(minDelayKey) == NULL)
+            delaylineAnnotation(*it);
+    }
 }
