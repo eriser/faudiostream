@@ -119,7 +119,6 @@ void MultirateInstructionsCompiler::compileVector(NamedAddress * vec, Tree sig)
 static bool isPrimitive(Tree sig)
 {
     int     i;
-    double  r;
     Tree    c, sel, x, y, z, label, id, ff, largs, type, name, file;
 
     if (   getUserData(sig)
