@@ -593,18 +593,27 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     DeclareVarInst * M  = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareM));
     DeclareVarInst * RM = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareRM));
 
-    fContainer->openLoop("delStoreIndex", maxDelay);
+    fContainer->openLoop("delStoreIndex", 1);
     fContainer->openLoop("j", sigRate);
+    fContainer->openLoop("delLoadIndex", 1);
+
+    // FIXME: we pack the delayload loop into a subloop in order to avoid the rate to be taken into account
+    ForLoopInst * delayloadLoop = genSubloop("j", 0, maxDelay);
+    LoadVarInst * loadM = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(M->getAddress(),
+                                                                                     delayloadLoop->loadDeclaration()));
+    StoreVarInst * storeRM = InstBuilder::genStoreVarInst(InstBuilder::genIndexedAddress(RM->getAddress(),
+                                                                                         delayloadLoop->loadDeclaration()),
+                                                          loadM);
+    delayloadLoop->pushBackInst(storeRM);
+    pushComputePreDSPMethod(delayloadLoop);
+
+    static Tree delayLineLoadLoopProperty = tree(Node("delayLineLoadLoopProperty"));
+    delayline->setProperty(delayLineLoadLoopProperty, tree(Node((void*)fContainer->getCurLoop())));
+
+    fContainer->closeLoop();
+
     CodeLoop * delayWriteLoop = fContainer->getCurLoop();
 
-    ForLoopInst * preloop = genSubloop("j", 0, maxDelay);
-    LoadVarInst * loadM = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(M->getAddress(),
-                                                                                     preloop->loadDeclaration()));
-    StoreVarInst * storeRM = InstBuilder::genStoreVarInst(InstBuilder::genIndexedAddress(RM->getAddress(),
-                                                                                         preloop->loadDeclaration()),
-                                                          loadM);
-    preloop->pushBackInst(storeRM);
-    pushComputePreDSPMethod(preloop);
 
     Address * address = InstBuilder::genIndexedAddress(RM->fAddress, FIRIndex(getCurrentLoopIndex()) + maxDelay);
     pushComputeDSPMethod(compileAssignment(address, arg, getCurrentLoopIndex()));
