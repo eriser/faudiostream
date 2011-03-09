@@ -76,6 +76,10 @@ protected:
     void setTableNameProperty(Tree sig, const string& vecname);
     bool getTableNameProperty(Tree sig, string& vecname);
 
+    void setLoopProperty(Tree sig, CodeLoop* l)  { fContainer->setLoopProperty(sig, l); }
+    bool getLoopProperty(Tree sig, CodeLoop*& l) { return fContainer->getLoopProperty(sig, l); }
+
+
     /* wrapper functions to access code container */
     StatementInst* pushInitMethod(StatementInst* inst)              { return fContainer->pushInitMethod(inst); }
     StatementInst* pushPostInitMethod(StatementInst* inst)          { return fContainer->pushPostInitMethod(inst); }
