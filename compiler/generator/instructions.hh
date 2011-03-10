@@ -321,7 +321,7 @@ struct Typed : public Printable
     Typed()
     {}
 
-    virtual VarType getType() = 0;
+    virtual VarType getType() const = 0;
 
     // Returns the pointer type version of a primitive type
     static VarType getPtrFromType(VarType type)
@@ -450,7 +450,7 @@ struct BasicTyped : public Typed {
         :fType(type)
     {}
 
-    VarType getType() { return fType; }
+    VarType getType() const { return fType; }
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 
@@ -469,7 +469,7 @@ struct NamedTyped : public Typed {
         :fName(name), fType(type)
     {}
 
-    VarType getType() { return fType->getType(); }
+    VarType getType() const { return fType->getType(); }
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 
@@ -495,7 +495,7 @@ struct FunTyped : public Typed {
         :fArgsTypes(args), fResult(result), fAttribute(attribute)
     {}
 
-    VarType getType() { assert(false); return fResult->getType(); }
+    VarType getType() const { assert(false); return fResult->getType(); }
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 
@@ -515,7 +515,7 @@ struct ArrayTyped : public Typed {
         :fType(type), fSize(size)
     {}
 
-    VarType getType() { return getPtrFromType(fType->getType()); }
+    VarType getType() const { return getPtrFromType(fType->getType()); }
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 
