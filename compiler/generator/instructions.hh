@@ -322,6 +322,7 @@ struct Typed : public Printable
     {}
 
     virtual VarType getType() const = 0;
+    virtual int dimension() const = 0;
 
     // Returns the pointer type version of a primitive type
     static VarType getPtrFromType(VarType type)
@@ -451,6 +452,7 @@ struct BasicTyped : public Typed {
     {}
 
     VarType getType() const { return fType; }
+    int dimension() const       { return 0; }
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 
@@ -470,6 +472,7 @@ struct NamedTyped : public Typed {
     {}
 
     VarType getType() const { return fType->getType(); }
+    int dimension() const       { return fType->dimension(); }
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 
@@ -496,6 +499,7 @@ struct FunTyped : public Typed {
     {}
 
     VarType getType() const { assert(false); return fResult->getType(); }
+    int dimension() const       { throw std::logic_error("functions have no notion of dimension"); }
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 
@@ -516,6 +520,7 @@ struct ArrayTyped : public Typed {
     {}
 
     VarType getType() const { return getPtrFromType(fType->getType()); }
+    virtual int dimension() const       { return 1 + fType->dimension(); }
 
     Typed* clone(CloneVisitor* cloner) { return cloner->visit(this); }
 
