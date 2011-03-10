@@ -185,6 +185,9 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * dest,
     if (isSigFixDelay(sig, arg1, arg2))
         return store(dest, compileSample(sig, index));
 
+    if (isProj(sig, &i, arg2))
+        return compileAssignmentProjection(dest, sig, index, i, arg2);
+
     throw std::runtime_error("not implemented");
     return NULL;
 }
@@ -220,6 +223,11 @@ ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, FIRIndex cons
 
     if (isSigFixDelay(sig, arg1, arg2))
         return compileSampleDelay(sig, index, arg1, arg2);
+
+    if (isProj(sig, &i, arg2))
+        // invariant: projections are followed by delay lines. therefore direct sample computation are not possible
+        throw std::logic_error("internal error: compiling sample from projection");
+
 
     throw std::runtime_error("not implemented");
     return NULL;
@@ -535,20 +543,52 @@ ValueInst * MultirateInstructionsCompiler::compileSampleAt(Tree sig, FIRIndex co
     return InstBuilder::genLoadVarInst(addressToLoad);
 }
 
+static Tree declaredDelayLineProperty = tree(Node("declaredDelayLineProperty"));
+
+static IndexedAddress * getDelayLineDeclaration(Tree delayline)
+{
+    Tree declaredDelayLine = delayline->getProperty(declaredDelayLineProperty);
+
+    if (declaredDelayLine)
+        return static_cast<IndexedAddress*>(tree2ptr(declaredDelayLine));
+    else
+        return NULL;
+}
+
+static int getDelaylineRate(Tree delayedSignal)
+{
+    //FIXME: maybe we can simply annotate the delayline with a rate?
+    int sigRate = getSigRate(delayedSignal);
+    if (sigRate)
+        return sigRate;
+
+    Tree recursiveGroup;
+    int i;
+    if (isProj(delayedSignal, &i, recursiveGroup)) {
+        Tree id, body;
+        ensure(isRec(recursiveGroup, id, body));
+        return getDelaylineRate(nth(body, i));
+    }
+    assert(false);
+
+}
+
 Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
 {
     Tree arg;
     ensure (isSigDelayLine(delayline, arg));
 
-    static Tree declaredDelayLineProperty = tree(Node("declaredDelayLineProperty"));
     Tree declaredDelayLine = delayline->getProperty(declaredDelayLineProperty);
     if (declaredDelayLine)
         return (Address*)tree2ptr(declaredDelayLine);
 
     // if small
-    int sigRate = getSigRate(arg);
+    int sigRate = getDelaylineRate(arg);
+    assert(sigRate);
     Typed * sigType = declareSignalType(arg);
     int maxDelay = getMaxDelay(delayline);
+    maxDelay = max(1, maxDelay); // FIXME: we ensure a delay of one sample, later we need to distinguish between delays of
+                                 // projections and `normal' delays
 
     ArrayTyped * mType = declareArrayTyped(sigType, maxDelay);
     ArrayTyped * rmType = declareArrayTyped(sigType, sigRate * gVecSize + maxDelay);
@@ -575,6 +615,8 @@ Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
     return returnAddress;
 }
 
+static Tree delayLineLoadLoopProperty = tree(Node("delayLineLoadLoopProperty"));
+
 Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
 {
     Tree arg;
@@ -590,8 +632,10 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     static Tree declareM = tree(Node("declareM"));
     static Tree declareRM = tree(Node("declareRM"));
 
-    int sigRate = getSigRate(arg);
+    int sigRate = getDelaylineRate(arg);
     int maxDelay = getMaxDelay(delayline);
+    maxDelay = max(1, maxDelay); // FIXME: we ensure a delay of one sample, later we need to distinguish between delays of
+                                 // projections and `normal' delays
 
     DeclareVarInst * M  = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareM));
     DeclareVarInst * RM = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareRM));
@@ -610,7 +654,6 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     delayloadLoop->pushBackInst(storeRM);
     pushComputePreDSPMethod(delayloadLoop);
 
-    static Tree delayLineLoadLoopProperty = tree(Node("delayLineLoadLoopProperty"));
     delayline->setProperty(delayLineLoadLoopProperty, tree(Node((void*)fContainer->getCurLoop())));
 
     fContainer->closeLoop();
@@ -645,21 +688,48 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
 
 ValueInst * MultirateInstructionsCompiler::compileSampleDelay(Tree sig, FIRIndex const & index, Tree delayline, Tree delay)
 {
-    IndexedAddress * delayAddress = dynamic_cast<IndexedAddress*>(compileDelayline(delayline));
+    IndexedAddress * delayAddress = getDelayLineDeclaration(delayline);
+
+    if (delayAddress == NULL)
+        // we need to compile the delayline
+        delayAddress = dynamic_cast<IndexedAddress*>(compileDelayline(delayline));
+
     ValueInst * compiledDelayLength = compileSample(delay, index);
 
     FIRIndex indexInDelayline = index - compiledDelayLength;
     LoadVarInst * loadDelay = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(delayAddress->fAddress,
                                                                                          indexInDelayline + delayAddress->fIndex));
 
+    // FIXME: maybe we can annotate the delay, if it is inside a recursion or outside?
     // set loop dependency explicitly
     CodeLoop * delaylineLoop;
-    ensure (getLoopProperty(delayline, delaylineLoop));
-    fContainer->getCurLoop()->addBackwardDependency(delaylineLoop);
-
+    if (getLoopProperty(delayline, delaylineLoop))
+        // the delayline has a loop property, so we are outside of a recursion and can add a dependency
+        fContainer->getCurLoop()->addBackwardDependency(delaylineLoop);
+    else {
+        // we need to ensure that the delay line has been loaded
+        CodeLoop * loadLoop = (CodeLoop *)tree2ptr(delayline->getProperty(delayLineLoadLoopProperty));
+        assert(loadLoop);
+        fContainer->getCurLoop()->addBackwardDependency(loadLoop);
+    }
     return loadDelay;
 }
 
+StatementInst * MultirateInstructionsCompiler::compileAssignmentProjection(Address * vec, Tree sig, FIRIndex const & index,
+                                                                           int projectionIndex, Tree recursiveGroup)
+{
+    Tree var, listOfExpressions;
+
+    ensure(isRec(recursiveGroup, var, listOfExpressions));
+    int numberOfExpressions = len(listOfExpressions);
+
+    assert(projectionIndex < numberOfExpressions);
+
+    Tree expressionToCompute = nth(listOfExpressions, projectionIndex);
+    ValueInst * compiledExpression = compileSample(expressionToCompute, index);
+    StatementInst * storeInst = store(vec, compiledExpression);
+    return storeInst;
+}
 
 
 StatementInst * MultirateInstructionsCompiler::store (Address * address, ValueInst * value)

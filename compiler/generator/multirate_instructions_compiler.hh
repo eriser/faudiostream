@@ -58,6 +58,7 @@ private:
     StatementInst * compileAssignmentSerialize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1);
     StatementInst * compileAssignmentConcat(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     StatementInst * compileAssignmentAt(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
+    StatementInst * compileAssignmentProjection(Address * vec, Tree sig, FIRIndex const & index, int i, Tree arg);
 
     Address * compileDelayline(Tree delayline);
     Address * declareDelayLine(Tree delayline);
