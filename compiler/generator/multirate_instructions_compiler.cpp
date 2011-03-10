@@ -566,8 +566,11 @@ Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
     Address * returnAddress = InstBuilder::genIndexedAddress(RM->getAddress(), InstBuilder::genIntNumInst(maxDelay));
     delayline->setProperty(declaredDelayLineProperty, tree(Node((void*)returnAddress)));
 
-    // TODO: clear buffers
+    ForLoopInst * clearMLoop = genSubloop("x", 0, maxDelay);
+    clearMLoop->pushBackInst(InstBuilder::genStoreVarInst(InstBuilder::genIndexedAddress(M->getAddress(), clearMLoop->loadDeclaration()),
+                                                          InstBuilder::genIntNumInst(0)));
 
+    pushInitMethod(clearMLoop);
 
     return returnAddress;
 }
