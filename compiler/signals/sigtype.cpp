@@ -170,7 +170,7 @@ Type operator| ( const Type& t1, const Type& t2)
         dimensions2 = vt2->dimensions();
 
         rit i1 = dimensions1.rbegin(); rit i2 = dimensions2.rbegin();
-        for( ; i1 != dimensions1.rend() || i2 != dimensions2.rend(); ++i1, ++i2)
+        for( ; !(i1 == dimensions1.rend() || i2 == dimensions2.rend()); ++i1, ++i2)
             if (*i1 != *i2) {
                 cerr << "Error : trying to combine incompatible types, " << t1 << " and " << t2 << endl;
                 exit(1);
