@@ -589,6 +589,7 @@ struct Address : public Printable {
     virtual void accept(InstVisitor* visitor) = 0;
 
     virtual std::vector<int> dimensions() const = 0;
+    virtual Typed * getTyped(void) const = 0;
 };
 
 struct NamedAddress : public Address {
@@ -624,6 +625,11 @@ struct NamedAddress : public Address {
             return std::vector<int>();
         return fTyped->dimensions();
     }
+
+    virtual Typed * getTyped(void) const
+    {
+        return fTyped;
+    }
 };
 
 struct IndexedAddress : public Address {
@@ -650,6 +656,14 @@ struct IndexedAddress : public Address {
         base.pop_back();
         return base;
     }
+
+    virtual Typed * getTyped(void) const
+    {
+        Typed * typeOfAddress = fAddress->getTyped();
+        ArrayTyped * arrayTyped = dynamic_cast<ArrayTyped*>(typeOfAddress);
+        assert(arrayTyped);
+        return arrayTyped->fType;
+    }
 };
 
 struct CastAddress: public Address
@@ -672,6 +686,11 @@ struct CastAddress: public Address
     vector<int> dimensions(void) const
     {
         return fType->dimensions();
+    }
+
+    Typed * getTyped(void) const
+    {
+        return fType;
     }
 };
 
