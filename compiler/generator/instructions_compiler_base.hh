@@ -120,7 +120,11 @@ protected:
         return n;
     }
 
-    string getFreshID(const string& prefix);
+public:
+    // FIXME: should this be moved the CodeContainer?
+    static string getFreshID(const string& prefix);
+
+protected:
     int getSharingCount(Tree sig);
     void setSharingCount(Tree sig, int count);
     void sharingAnalysis(Tree t);
