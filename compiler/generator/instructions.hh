@@ -321,6 +321,7 @@ struct Typed : public Printable
     Typed()
     {}
 
+    virtual VarType getVarType() const = 0;
     virtual VarType getType() const = 0;
     virtual int dimension() const = 0;
 
@@ -451,6 +452,7 @@ struct BasicTyped : public Typed {
         :fType(type)
     {}
 
+    VarType getVarType() const { return fType; }
     VarType getType() const { return fType; }
     int dimension() const       { return 0; }
 
@@ -471,6 +473,7 @@ struct NamedTyped : public Typed {
         :fName(name), fType(type)
     {}
 
+    VarType getVarType() const { return fType->getVarType(); }
     VarType getType() const { return fType->getType(); }
     int dimension() const       { return fType->dimension(); }
 
@@ -498,6 +501,7 @@ struct FunTyped : public Typed {
         :fArgsTypes(args), fResult(result), fAttribute(attribute)
     {}
 
+    VarType getVarType() const { assert(false); return fResult->getVarType(); }
     VarType getType() const { assert(false); return fResult->getType(); }
     int dimension() const       { throw std::logic_error("functions have no notion of dimension"); }
 
@@ -518,6 +522,8 @@ struct ArrayTyped : public Typed {
     ArrayTyped(Typed* type, int size)
         :fType(type), fSize(size)
     {}
+
+    VarType getVarType() const { return fType->getVarType(); }
 
     VarType getType() const { return getPtrFromType(fType->getType()); }
     virtual int dimension() const       { return 1 + fType->dimension(); }
