@@ -1330,7 +1330,7 @@ class BasicCloneVisitor : public CloneVisitor {
         virtual StatementInst* visit(LabelInst* inst) { return new LabelInst(inst->fLabel); }
 
         // Typed
-        virtual Typed* visit(BasicTyped* typed) { return typed->gTypeTable[typed->fType]; }
+        virtual Typed* visit(BasicTyped* typed);
         virtual Typed* visit(NamedTyped* typed) { return new NamedTyped(typed->fName, typed->fType); }
         virtual Typed* visit(FunTyped* typed)
         {
@@ -1341,7 +1341,7 @@ class BasicCloneVisitor : public CloneVisitor {
             }
             return new FunTyped(cloned, dynamic_cast<BasicTyped*>(typed->fResult->clone(this)), typed->fAttribute);
         }
-        virtual Typed* visit(ArrayTyped* typed) { return new ArrayTyped(typed->fType->clone(this), typed->fSize); }
+        virtual Typed* visit(ArrayTyped* typed);
 };
 
 // ========================

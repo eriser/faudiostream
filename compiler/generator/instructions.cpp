@@ -39,6 +39,18 @@ struct LoadVarInst * DeclareVarInst::load ()
     return InstBuilder::genLoadVarInst(fAddress);
 }
 
+
+Typed* BasicCloneVisitor::visit(BasicTyped* typed)
+{
+    return InstBuilder::genBasicTyped(typed->getVarType());
+}
+
+Typed* BasicCloneVisitor::visit(ArrayTyped * typed)
+{
+    return InstBuilder::genArrayTyped(typed->fType->clone(this), typed->fSize);
+}
+
+
 DeclareFunInst* InstBuilder::genVoidFunction(const string& name)
 {
     list<NamedTyped*> args;
