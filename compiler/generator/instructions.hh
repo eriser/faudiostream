@@ -1922,7 +1922,7 @@ struct InstBuilder
     // Stack variable
     static DeclareVarInst* genDecStackVar(string vname, Typed* type, ValueInst* exp = NULL)
     {
-        return genDeclareVarInst(genNamedAddress(vname, Address::kStack), type, exp);
+        return genDeclareVarInst(genNamedAddress(vname, Address::kStack, type), type, exp);
     }
 
     static LoadVarInst* genLoadStackVar(string vname)
