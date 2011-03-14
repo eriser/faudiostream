@@ -53,6 +53,8 @@ private:
     ValueInst * compileSampleDelay(Tree sig, FIRIndex const & index, Tree delayline, Tree delay);
 
     ValueInst * compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index);
+    ValueInst * compileScalarBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index);
+    ValueInst * compileVectorBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index);
 
     StatementInst * compileAssignmentVectorize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     StatementInst * compileAssignmentSerialize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1);
@@ -72,6 +74,7 @@ private:
 
     Typed * declareSignalType(Tree sig);
     Typed * declareSignalType(AudioType * type);
+    Typed * declareSignalType(Typed * type);
     ArrayTyped * declareArrayTyped(Typed * typed, int size);
 
     ForLoopInst* genSubloop(string const & loopSymbol, int lowBound, int highBound);

@@ -275,7 +275,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
     }
 }
 
-ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index)
+ValueInst * MultirateInstructionsCompiler::compileScalarBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index)
 {
     int t1 = getSigType(arg1)->nature();
     int t2 = getSigType(arg2)->nature();
@@ -319,6 +319,126 @@ ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tr
     }
 
     return res;
+}
+
+ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index)
+{
+    Typed * resultTyped = declareSignalType(sig);
+    if (resultTyped->dimension() == 0)
+        return compileScalarBinop(sig, opcode, arg1, arg2, index);
+    else
+        return compileVectorBinop(sig, opcode, arg1, arg2, index);
+}
+
+static Typed::VarType getBaseType(AudioType * sigType)
+{
+    Typed * firType = InstBuilder::genType(sigType)->fType;
+
+    return firType->getVarType();
+}
+
+ValueInst * MultirateInstructionsCompiler::compileVectorBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index)
+{
+    int sigRate = getSigRate(sig);
+    Type sigType = getSigType(sig);
+
+    vector<ValueInst*> args;
+    args.push_back(compileSample(arg1, index));
+    args.push_back(compileSample(arg2, index));
+
+    vector<AudioType*> argTypes;
+    argTypes.push_back(getSigType(arg1));
+    argTypes.push_back(getSigType(arg2));
+
+    vector<int> argDimensions;
+    for (int i = 0; i != 2; ++i)
+        argDimensions.push_back(argTypes[i]->dimension());
+
+    const int largestArgument = std::max_element(argDimensions.begin(), argDimensions.end()) - argDimensions.begin();
+
+    const int maxDimension = argDimensions[largestArgument];
+
+    assert (maxDimension > 0);
+
+    vector<int> dimensions = dynamic_cast<FaustVectorType*>(argTypes[largestArgument])->dimensions();
+
+    vector<ValueInst*> loopIndexStack;
+    ForLoopInst * loopTop = NULL;
+
+    string binopId = getFreshID("binop_");
+
+    vector<string> scalarNames; vector<ValueInst*> scalarArguments(2, NULL);
+    for (int i = 0; i != 2; ++i) {
+        string name;
+        Loki::SPrintf(name, "%s_%d")(binopId)(i);
+        scalarNames.push_back(name);
+    }
+
+    Typed * resultBufferType = declareSignalType(InstBuilder::genArrayTyped(declareSignalType(sigType),
+                                                                            sigRate * gVecSize));
+    BasicTyped* resultBasicType = InstBuilder::genBasicTyped(resultBufferType->getVarType());
+
+    DeclareVarInst* resultBuffer = InstBuilder::genDecStackVar(binopId + "_result", resultBufferType);
+    pushDeclare(resultBuffer);
+
+    int currentDimension = maxDimension;
+    do {
+        string loopVar;
+        Loki::SPrintf(loopVar, "i_%d")(currentDimension);
+
+        ForLoopInst * loop = genSubloop(loopVar, 0, dimensions[currentDimension-1]);
+        loopIndexStack.push_back(loop->loadDeclaration());
+
+        // declare scalar as local variable
+        for (size_t i = 0; i != args.size(); ++i) {
+            if (argDimensions[i] == currentDimension) {
+                ValueInst * compiledExpression = args[i];
+                LoadVarInst* loadCompiledExpression = dynamic_cast<LoadVarInst*>(compiledExpression);
+                assert(loadCompiledExpression);
+
+                vector <ValueInst*> loadIndex = loopIndexStack;
+                loadIndex.push_back(getCurrentLoopIndex());
+                ValueInst * argExpression = InstBuilder::genLoadArrayStructVar(loadCompiledExpression->fAddress->getName(),
+                                                                               loadIndex.begin(), loadIndex.end());
+
+                if (getBaseType(argTypes[i]) != resultBasicType->getType())
+                    argExpression = InstBuilder::genCastNumInst(argExpression, resultBasicType);
+
+                DeclareVarInst* scalarDeclaration = InstBuilder::genDecStackVar(scalarNames[i], resultBasicType);
+                loop->pushBackInst(scalarDeclaration);
+                loop->pushBackInst(scalarDeclaration->store(argExpression));
+                scalarArguments[i] = scalarDeclaration->load();
+            }
+        }
+
+        if (loopTop == 0)
+            pushComputeDSPMethod(loop);
+        else
+            loopTop->fCode->pushBackInst(loop);
+        loopTop = loop;
+    } while (currentDimension-- > 1);
+
+    // collect remaining arguments
+    for (size_t i = 0; i != args.size(); ++i)
+        if (argDimensions[i] == 0) {
+            if (getBaseType(argTypes[i]) != resultBasicType->getType())
+                scalarArguments[i] = InstBuilder::genCastNumInst(args[i], resultBasicType);
+            else
+                scalarArguments[i] = args[i];
+        }
+
+    ValueInst * BinOp = InstBuilder::genBinopInst(opcode, scalarArguments[0], scalarArguments[1]);
+
+    vector <ValueInst*> storeIndex = loopIndexStack;
+    storeIndex.push_back(getCurrentLoopIndex());
+    StoreVarInst * store = InstBuilder::genStoreArrayStructVar(resultBuffer->getName(), resultBufferType, BinOp,
+                                                               storeIndex.begin(), storeIndex.end());
+    loopTop->pushBackInst(store);
+
+    ValueInst * result = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(resultBuffer->fAddress,
+                                                                                    getCurrentLoopIndex()));
+
+    return result;
 }
 
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex const & index)
@@ -749,6 +869,13 @@ Typed * MultirateInstructionsCompiler::declareSignalType(AudioType * type)
     pushGlobalDeclare(declareType);
     return declareType->fType;
 }
+
+Typed * MultirateInstructionsCompiler::declareSignalType(Typed * type)
+{
+    pushGlobalDeclare(InstBuilder::genDeclareTypeInst(type));
+    return type;
+}
+
 
 ArrayTyped * MultirateInstructionsCompiler::declareArrayTyped(Typed * typed, int size)
 {

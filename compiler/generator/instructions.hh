@@ -1891,6 +1891,20 @@ struct InstBuilder
         return genStoreVarInst(address, exp);
     }
 
+    template <typename Iterator>
+    static StoreVarInst* genStoreArrayStructVar(string vname, Typed* baseTyped, ValueInst* exp, Iterator indexBegin, Iterator indexEnd)
+    {
+        typedef reverse_iterator<Iterator> Rit;
+        Rit rbegin (indexEnd);
+        Rit rend (indexBegin);
+
+        Address * address = genNamedAddress(vname, Address::kStruct, baseTyped);
+        for (Rit it = rbegin; it != rend; ++it)
+            address = genIndexedAddress(address, *it);
+
+        return genStoreVarInst(address, exp);
+    }
+
     static StoreVarInst* genStoreArrayStructVar(string vname, ValueInst* index, ValueInst* exp)
     {
         vector<ValueInst*> indices;
