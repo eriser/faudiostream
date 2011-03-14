@@ -659,6 +659,7 @@ struct IndexedAddress : public Address {
     vector<int> dimensions(void) const
     {
         vector<int> base = fAddress->dimensions();
+        assert(!base.empty());
         base.pop_back();
         return base;
     }
