@@ -133,6 +133,8 @@ class AudioType
     {
         return 0;
     }
+
+    virtual AudioType * getScalarBaseType(void) = 0;
 };
 
 //printing
@@ -251,6 +253,8 @@ class SimpleType : public AudioType
 
     virtual AudioType* castNature(int n)                    { return new SimpleType(n, fVariability, fComputability, fVectorability, fBoolean, fInterval); }
     virtual AudioType* castInterval(const interval& i)      { return new SimpleType(fNature, fVariability, fComputability, fVectorability, fBoolean, i); }
+
+    AudioType * getScalarBaseType(void)                     { return this; }
 };
 
 inline Type intCast (Type t)	                        { return t->castNature(kInt); }
@@ -289,6 +293,8 @@ class TableType : public AudioType
 
     virtual AudioType* castNature(int n)                    { return new TableType(fContent, n, fVariability, fComputability, fVectorability, fBoolean, fInterval); }
     virtual AudioType* castInterval(const interval& i)      { return new TableType(fContent, fNature, fVariability, fComputability, fVectorability, fBoolean, i); }
+
+    AudioType * getScalarBaseType(void)                     { throw std::logic_error("internal error: vector of tables"); }
 };
 
 
@@ -333,6 +339,8 @@ class TupletType : public AudioType
 
     virtual AudioType* castNature(int n)                    { return new TupletType(fComponents, n, fVariability, fComputability, fVectorability, fBoolean, fInterval); }
     virtual AudioType* castInterval(const interval& i)      { return new TupletType(fComponents, fNature, fVariability, fComputability, fVectorability, fBoolean, i);  }
+
+    AudioType * getScalarBaseType(void)                     { throw std::logic_error("internal error: vector of tuplets"); }
 };
 
 
@@ -369,6 +377,11 @@ public:
 
     AudioType * dereferenceType(void)   { return fType; }
     int size(void) const                { return fSize; }
+
+    AudioType * getScalarBaseType(void)
+    {
+        return fType->getScalarBaseType();
+    }
 
     int dimension() const
     {
