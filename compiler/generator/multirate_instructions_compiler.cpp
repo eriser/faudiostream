@@ -346,9 +346,9 @@ ValueInst * MultirateInstructionsCompiler::compileVectorBinop(Tree sig, int opco
     args.push_back(compileSample(arg1, index));
     args.push_back(compileSample(arg2, index));
 
-    vector<AudioType*> argTypes;
-    argTypes.push_back(getSigType(arg1));
-    argTypes.push_back(getSigType(arg2));
+    vector<Typed*> argTypes;
+    argTypes.push_back(declareSignalType(arg1));
+    argTypes.push_back(declareSignalType(arg2));
 
     vector<int> argDimensions;
     for (int i = 0; i != 2; ++i)
@@ -360,7 +360,7 @@ ValueInst * MultirateInstructionsCompiler::compileVectorBinop(Tree sig, int opco
 
     assert (maxDimension > 0);
 
-    vector<int> dimensions = dynamic_cast<FaustVectorType*>(argTypes[largestArgument])->dimensions();
+    vector<int> dimensions = dynamic_cast<ArrayTyped*>(argTypes[largestArgument])->dimensions();
 
     vector<ValueInst*> loopIndexStack;
     ForLoopInst * loopTop = NULL;
@@ -401,7 +401,7 @@ ValueInst * MultirateInstructionsCompiler::compileVectorBinop(Tree sig, int opco
                 ValueInst * argExpression = InstBuilder::genLoadArrayStructVar(loadCompiledExpression->fAddress->getName(),
                                                                                loadIndex.begin(), loadIndex.end());
 
-                if (getBaseType(argTypes[i]) != resultBasicType->getType())
+                if (argTypes[i]->getVarType() != resultBasicType->getVarType())
                     argExpression = InstBuilder::genCastNumInst(argExpression, resultBasicType);
 
                 DeclareVarInst* scalarDeclaration = InstBuilder::genDecStackVar(scalarNames[i], resultBasicType);
@@ -421,7 +421,7 @@ ValueInst * MultirateInstructionsCompiler::compileVectorBinop(Tree sig, int opco
     // collect remaining arguments
     for (size_t i = 0; i != args.size(); ++i)
         if (argDimensions[i] == 0) {
-            if (getBaseType(argTypes[i]) != resultBasicType->getType())
+            if (argTypes[i]->getVarType() != resultBasicType->getType())
                 scalarArguments[i] = InstBuilder::genCastNumInst(args[i], resultBasicType);
             else
                 scalarArguments[i] = args[i];
