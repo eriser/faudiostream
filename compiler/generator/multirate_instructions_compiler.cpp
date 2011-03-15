@@ -308,9 +308,9 @@ ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tr
 
     Typed * resultTyped = declareSignalType(sig);
     if (resultTyped->dimension() == 0)
-        return compileScalarSample(sig, arguments.begin(), arguments.end(), index, functor);
+        return compileScalarSample(sig, arguments.begin(), arguments.end(), index, functor, true);
     else {
-        return compileVectorSample(sig, arguments.begin(), arguments.end(), index, functor);
+        return compileVectorSample(sig, arguments.begin(), arguments.end(), index, functor, true);
     }
 }
 
@@ -362,9 +362,9 @@ ValueInst * MultirateInstructionsCompiler::compileXtended(Tree sig, FIRIndex con
 
     Typed * resultTyped = declareSignalType(sig);
     if (resultTyped->dimension() == 0)
-        return compileScalarSample(sig, arguments.begin(), arguments.end(), index, functor);
+        return compileScalarSample(sig, arguments.begin(), arguments.end(), index, functor, false);
     else
-        return compileVectorSample(sig, arguments.begin(), arguments.end(), index, functor);
+        return compileVectorSample(sig, arguments.begin(), arguments.end(), index, functor, false);
 }
 
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex const & index)

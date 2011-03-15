@@ -88,7 +88,8 @@ private:
               class compilePrimitiveFunctor
              >
     ValueInst * compileVectorSample(Tree sig, ArgumentIterator argsBegin, ArgumentIterator argsEnd,
-                                    FIRIndex const & index, compilePrimitiveFunctor const & generatePrimitive)
+                                    FIRIndex const & index, compilePrimitiveFunctor const & generatePrimitive,
+                                    bool createCasts = false)
     {
         const int sigRate = getSigRate(sig);
         Typed * resultTyped = declareSignalType(sig);
@@ -148,7 +149,7 @@ private:
                     ValueInst * argExpression = InstBuilder::genLoadArrayStructVar(loadCompiledExpression->fAddress->getName(),
                                                                                 loadIndex.begin(), loadIndex.end());
 
-                    if (argTypes[i]->getVarType() != resultBasicType->getVarType())
+                    if (createCasts && argTypes[i]->getVarType() != resultBasicType->getVarType())
                         argExpression = InstBuilder::genCastNumInst(argExpression, resultBasicType);
 
                     DeclareVarInst* scalarDeclaration = InstBuilder::genDecStackVar(scalarNames[i], resultBasicType);
@@ -168,7 +169,7 @@ private:
         // collect remaining arguments
         for (size_t i = 0; i != args.size(); ++i)
             if (argDimensions[i] == 0) {
-                if (argTypes[i]->getVarType() != resultBasicType->getType())
+                if (createCasts && argTypes[i]->getVarType() != resultBasicType->getType())
                     scalarArguments[i] = InstBuilder::genCastNumInst(args[i], resultBasicType);
                 else
                     scalarArguments[i] = args[i];
@@ -192,7 +193,8 @@ private:
               class compilePrimitiveFunctor
              >
     ValueInst * compileScalarSample(Tree sig, ArgumentIterator argsBegin, ArgumentIterator argsEnd,
-                                    FIRIndex const & index, compilePrimitiveFunctor const & generatePrimitive)
+                                    FIRIndex const & index, compilePrimitiveFunctor const & generatePrimitive,
+                                    bool createCasts = false)
     {
         // FIXME: we are adding explicit cast instructions. however we should re-check if this is required, since some casts are added in the signal domain
         int resultNature = getSigType(sig)->nature();
@@ -212,7 +214,7 @@ private:
             ValueInst * compiledArg = compileSample(arg, index);
             int argumentNature = getSigType(arg)->nature();
 
-            if (hasFloatArgs && (argumentNature == kInt))
+            if (createCasts && hasFloatArgs && (argumentNature == kInt))
                 compiledArg = InstBuilder::genCastNumInst(compiledArg, InstBuilder::genBasicTyped(itfloat()));
 
             scalarArguments.push_back(compiledArg);
@@ -220,7 +222,7 @@ private:
 
         ValueInst * result = generatePrimitive(scalarArguments.begin(), scalarArguments.end());
 
-        if (hasFloatArgs && (resultNature == kInt))
+        if (createCasts && hasFloatArgs && (resultNature == kInt))
             result = InstBuilder::genCastNumInst(result, InstBuilder::genBasicTyped(Typed::kInt));
 
         return result;
