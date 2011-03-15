@@ -83,6 +83,18 @@ private:
 
     ValueInst * fVectorSize;
 
+    template <typename ArgumentContainer,
+              class compilePrimitiveFunctor
+             >
+    ValueInst * dispatchPolymorphicFunctor(Tree sig, ArgumentContainer const & arguments, FIRIndex const & index,
+                                           compilePrimitiveFunctor const & functor, bool generateCasts)
+    {
+        Typed * resultTyped = declareSignalType(sig);
+        if (resultTyped->dimension() == 0)
+            return compileScalarSample(sig, arguments.begin(), arguments.end(), index, functor, generateCasts);
+        else
+            return compileVectorSample(sig, arguments.begin(), arguments.end(), index, functor, generateCasts);
+    }
 
     template <typename ArgumentIterator,
               class compilePrimitiveFunctor

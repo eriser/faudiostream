@@ -304,14 +304,7 @@ ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tr
     arguments.push_back(arg1);
     arguments.push_back(arg2);
 
-    ScalarBinopFunctor functor(opcode);
-
-    Typed * resultTyped = declareSignalType(sig);
-    if (resultTyped->dimension() == 0)
-        return compileScalarSample(sig, arguments.begin(), arguments.end(), index, functor, true);
-    else {
-        return compileVectorSample(sig, arguments.begin(), arguments.end(), index, functor, true);
-    }
+    return dispatchPolymorphicFunctor(sig, arguments, index, ScalarBinopFunctor(opcode), true);
 }
 
 struct ScalarXtendedFunctor
@@ -356,15 +349,11 @@ ValueInst * MultirateInstructionsCompiler::compileXtended(Tree sig, FIRIndex con
         argTypes.push_back(getSigType(sig->branch(i)));
     }
 
-    ScalarXtendedFunctor functor(p, fContainer, resultType, argTypes);
-
     // FIXME: for now we ignore the p->needCache flag
+    return dispatchPolymorphicFunctor(sig, arguments, index, ScalarXtendedFunctor(p, fContainer, resultType, argTypes), false);
+}
 
-    Typed * resultTyped = declareSignalType(sig);
-    if (resultTyped->dimension() == 0)
-        return compileScalarSample(sig, arguments.begin(), arguments.end(), index, functor, false);
-    else
-        return compileVectorSample(sig, arguments.begin(), arguments.end(), index, functor, false);
+
 }
 
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex const & index)
