@@ -29,6 +29,7 @@
 
 #include "prepare_delaylines.hh"
 #include <xtended.hh>
+#include <prim2.hh>
 
 void MultirateInstructionsCompiler::compileMultiSignal(Tree L)
 {
@@ -354,6 +355,47 @@ ValueInst * MultirateInstructionsCompiler::compileXtended(Tree sig, FIRIndex con
 }
 
 
+struct ScalarFfunFunctor
+{
+    string fFunctionName;
+
+    ScalarFfunFunctor(string const & functionName):
+        fFunctionName(functionName)
+    {}
+
+    template <typename ArgIterator>
+    ValueInst * operator()(ArgIterator argsBegin, ArgIterator argsEnd) const
+    {
+        list<ValueInst*> args(argsBegin, argsEnd);
+
+        ValueInst * result = InstBuilder::genFunCallInst(fFunctionName, args);
+        return result;
+    }
+};
+
+ValueInst * MultirateInstructionsCompiler::compileFFun(Tree sig, Tree ff, Tree args, FIRIndex const & index)
+{
+    fContainer->addIncludeFile(ffincfile(ff));
+    fContainer->addLibrary(fflibfile(ff));
+
+    string funname = ffname(ff);
+    vector<Tree> arguments;
+    list<NamedTyped*> args_types;
+    FunTyped* fun_type;
+
+    for (int i = 0; i< ffarity(ff); i++) {
+        stringstream num; num << i;
+        Tree parameter = nth(args, i);
+        ::Type t1 = getSigType(parameter)->getScalarBaseType();
+        args_types.push_back(InstBuilder::genNamedTyped("dummy" + num.str(), InstBuilder::genBasicTyped((t1->nature() == kInt) ? Typed::kInt : itfloat())));
+        arguments.push_back(parameter);
+    }
+
+    // Add function declaration
+    fun_type = InstBuilder::genFunTyped(args_types, InstBuilder::genBasicTyped((ffrestype(ff) == kInt) ? Typed::kInt : itfloat()));
+    pushExtGlobalDeclare(InstBuilder::genDeclareFunInst(funname, fun_type));
+
+    return dispatchPolymorphicFunctor(sig, arguments, index, ScalarFfunFunctor(funname), false);
 }
 
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex const & index)
@@ -367,6 +409,10 @@ ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex c
 
     if (getUserData(sig))
         return compileXtended(sig, index);
+
+    if (isSigFFun(sig, ff, largs))
+        return compileFFun(sig, ff, largs, index);
+
 
     throw std::runtime_error("not implemented");
 }

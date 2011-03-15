@@ -57,6 +57,7 @@ private:
 
     ValueInst * compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index);
     ValueInst * compileXtended(Tree sig, FIRIndex const & index);
+    ValueInst * compileFFun(Tree sig, Tree ff, Tree args, FIRIndex const & index);
 
     StatementInst * compileAssignmentVectorize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     StatementInst * compileAssignmentSerialize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1);
