@@ -398,6 +398,50 @@ ValueInst * MultirateInstructionsCompiler::compileFFun(Tree sig, Tree ff, Tree a
     return dispatchPolymorphicFunctor(sig, arguments, index, ScalarFfunFunctor(funname), false);
 }
 
+ValueInst * MultirateInstructionsCompiler::loadForeignVar(Tree sig, Tree type, Tree name, Tree file, FIRIndex const & index)
+{
+    string nameString = tree2str(name);
+
+    fContainer->addIncludeFile(tree2str(file));
+
+    int sig_type = getSigType(sig)->nature();
+    pushExtGlobalDeclare(InstBuilder::genDecGlobalVar(nameString,
+        InstBuilder::genBasicTyped((sig_type == kInt) ? Typed::kInt : itfloat())));
+    return InstBuilder::genLoadGlobalVar(nameString);
+}
+
+
+struct CastFunctor
+{
+    const int fNature;
+
+    CastFunctor(int nature):
+        fNature(nature)
+    {}
+
+    template <typename ArgIterator>
+    ValueInst * operator()(ArgIterator argsBegin, ArgIterator argsEnd) const
+    {
+        const size_t argumentCount = argsEnd - argsBegin;
+        assert(argumentCount == 1);
+        ValueInst * arg = *argsBegin;
+
+        if (fNature == Typed::kInt)
+            return InstBuilder::genCastNumInst(arg, InstBuilder::genBasicTyped(Typed::kInt));
+        else
+            return InstBuilder::genCastNumInst(arg, InstBuilder::genBasicTyped(itfloat()));
+    }
+};
+
+ValueInst * MultirateInstructionsCompiler::compileCast(Tree sig, Tree arg, Typed::VarType type, FIRIndex const & index)
+{
+    vector<Tree> arguments;
+    arguments.push_back(arg);
+
+    return dispatchPolymorphicFunctor(sig, arguments, index, CastFunctor(type), false);
+}
+
+
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex const & index)
 {
     int     i;
@@ -412,6 +456,15 @@ ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex c
 
     if (isSigFFun(sig, ff, largs))
         return compileFFun(sig, ff, largs, index);
+
+    if (isSigFConst(sig, type, name, file) ||
+        isSigFVar(sig, type, name, file) )
+        return loadForeignVar(sig, type, name, file, index);
+
+    if (isSigIntCast(sig, x))
+        return compileCast(sig, x, Typed::kInt, index);
+    if (isSigFloatCast(sig, x))
+        return compileCast(sig, x, itfloat(), index);
 
 
     throw std::runtime_error("not implemented");
