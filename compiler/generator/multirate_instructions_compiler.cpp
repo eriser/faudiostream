@@ -28,6 +28,7 @@
 #include "ensure.hh"
 
 #include "prepare_delaylines.hh"
+#include <xtended.hh>
 
 void MultirateInstructionsCompiler::compileMultiSignal(Tree L)
 {
@@ -313,6 +314,58 @@ ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tr
     }
 }
 
+struct ScalarXtendedFunctor
+{
+    xtended * fXtended;
+    CodeContainer * fContainer;
+    vector< ::Type> fScalarArgTypes;
+    ::Type fScalarResultType;
+
+    ScalarXtendedFunctor(xtended * xtdd, CodeContainer * container, AudioType * resultType, vector<AudioType*> const & argTypes):
+        fXtended(xtdd), fContainer(container)
+    {
+        // the extended API requires the base audio type, so compute it here.
+        fScalarResultType = resultType->getScalarBaseType();
+        for (vector<AudioType*>::const_iterator it = argTypes.begin(); it != argTypes.end(); ++it)
+            fScalarArgTypes.push_back((*it)->getScalarBaseType());
+    }
+
+    template <typename ArgIterator>
+    ValueInst * operator()(ArgIterator argsBegin, ArgIterator argsEnd) const
+    {
+        list<ValueInst*> args(argsBegin, argsEnd);
+        const size_t argumentCount = argsEnd - argsBegin;
+        assert(argumentCount == fXtended->arity());
+
+        ValueInst * result = fXtended->generateCode(fContainer, args, fScalarResultType, fScalarArgTypes);
+        return result;
+    }
+};
+
+
+
+ValueInst * MultirateInstructionsCompiler::compileXtended(Tree sig, FIRIndex const & index)
+{
+    xtended* p = (xtended*)getUserData(sig);
+    vector<Tree> arguments;
+    vector<AudioType*> argTypes;
+    AudioType* resultType = getSigType(sig);
+
+    for (int i = 0; i < sig->arity(); i++) {
+        arguments.push_back(sig->branch(i));
+        argTypes.push_back(getSigType(sig->branch(i)));
+    }
+
+    ScalarXtendedFunctor functor(p, fContainer, resultType, argTypes);
+
+    // FIXME: for now we ignore the p->needCache flag
+
+    Typed * resultTyped = declareSignalType(sig);
+    if (resultTyped->dimension() == 0)
+        return compileScalarSample(sig, arguments.begin(), arguments.end(), index, functor);
+    else
+        return compileVectorSample(sig, arguments.begin(), arguments.end(), index, functor);
+}
 
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex const & index)
 {
@@ -323,6 +376,8 @@ ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex c
     if (isSigBinOp(sig, &i, x, y))
         return compileBinop(sig, i, x, y, index);
 
+    if (getUserData(sig))
+        return compileXtended(sig, index);
 
     throw std::runtime_error("not implemented");
 }

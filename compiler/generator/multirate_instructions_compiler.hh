@@ -56,6 +56,7 @@ private:
     ValueInst * compileSampleDelay(Tree sig, FIRIndex const & index, Tree delayline, Tree delay);
 
     ValueInst * compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index);
+    ValueInst * compileXtended(Tree sig, FIRIndex const & index);
 
     StatementInst * compileAssignmentVectorize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     StatementInst * compileAssignmentSerialize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1);
@@ -193,6 +194,7 @@ private:
     ValueInst * compileScalarSample(Tree sig, ArgumentIterator argsBegin, ArgumentIterator argsEnd,
                                     FIRIndex const & index, compilePrimitiveFunctor const & generatePrimitive)
     {
+        // FIXME: we are adding explicit cast instructions. however we should re-check if this is required, since some casts are added in the signal domain
         int resultNature = getSigType(sig)->nature();
 
         vector<int> argumentNatures;
