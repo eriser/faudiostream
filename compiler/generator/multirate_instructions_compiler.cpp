@@ -275,60 +275,6 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
     }
 }
 
-ValueInst * MultirateInstructionsCompiler::compileScalarBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index)
-{
-    int t1 = getSigType(arg1)->nature();
-    int t2 = getSigType(arg2)->nature();
-    int t3 = getSigType(sig)->nature();
-
-    ValueInst* res = NULL;
-    ValueInst* val1 = compileSample(arg1, index);
-    ValueInst* val2 = compileSample(arg2, index);
-
-    // Arguments and expected result type analysis, add the required "cast" when needed
-    if (t1 == kReal) {
-        if (t2 == kReal) {
-            res = InstBuilder::genBinopInst(opcode, val1, val2);
-            if (t3 == kReal) {
-                // Nothing
-            } else {
-                res = InstBuilder::genCastNumInst(res, InstBuilder::genBasicTyped(Typed::kInt));
-            }
-        } else {
-            res = InstBuilder::genBinopInst(opcode, val1, InstBuilder::genCastNumInst(val2, InstBuilder::genBasicTyped(itfloat())));
-            if (t3 == kReal) {
-                // Nothing
-            } else {
-                res = InstBuilder::genCastNumInst(res, InstBuilder::genBasicTyped(Typed::kInt));
-            }
-        }
-    } else if (t2 == kReal) {
-        res = InstBuilder::genBinopInst(opcode, InstBuilder::genCastNumInst(val1, InstBuilder::genBasicTyped(itfloat())), val2);
-        if (t3 == kReal) {
-            // Nothing
-        } else {
-            res = InstBuilder::genCastNumInst(res, InstBuilder::genBasicTyped(Typed::kInt));
-        }
-    } else {
-        res = InstBuilder::genBinopInst(opcode, val1, val2);
-        if (t3 == kReal) {
-            res = InstBuilder::genCastNumInst(res, InstBuilder::genBasicTyped(itfloat()));
-        } else {
-            // Nothing
-        }
-    }
-
-    return res;
-}
-
-ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index)
-{
-    Typed * resultTyped = declareSignalType(sig);
-    if (resultTyped->dimension() == 0)
-        return compileScalarBinop(sig, opcode, arg1, arg2, index);
-    else
-        return compileVectorBinop(sig, opcode, arg1, arg2, index);
-}
 
 struct ScalarBinopFunctor
 {
@@ -351,14 +297,21 @@ struct ScalarBinopFunctor
     }
 };
 
-ValueInst * MultirateInstructionsCompiler::compileVectorBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index)
+ValueInst * MultirateInstructionsCompiler::compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index)
 {
     vector<Tree> arguments;
     arguments.push_back(arg1);
     arguments.push_back(arg2);
-    return compileVectorSample(sig, arguments.begin(), arguments.end(), index, ScalarBinopFunctor(opcode));
-}
 
+    ScalarBinopFunctor functor(opcode);
+
+    Typed * resultTyped = declareSignalType(sig);
+    if (resultTyped->dimension() == 0)
+        return compileScalarSample(sig, arguments.begin(), arguments.end(), index, functor);
+    else {
+        return compileVectorSample(sig, arguments.begin(), arguments.end(), index, functor);
+    }
+}
 
 
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex const & index)

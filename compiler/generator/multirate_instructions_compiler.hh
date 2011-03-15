@@ -56,8 +56,6 @@ private:
     ValueInst * compileSampleDelay(Tree sig, FIRIndex const & index, Tree delayline, Tree delay);
 
     ValueInst * compileBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index);
-    ValueInst * compileScalarBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index);
-    ValueInst * compileVectorBinop(Tree sig, int opcode, Tree arg1, Tree arg2, FIRIndex const & index);
 
     StatementInst * compileAssignmentVectorize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     StatementInst * compileAssignmentSerialize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1);
@@ -185,6 +183,43 @@ private:
 
         ValueInst * result = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(resultBuffer->fAddress,
                                                                                         getCurrentLoopIndex()));
+
+        return result;
+    }
+
+    template <typename ArgumentIterator,
+              class compilePrimitiveFunctor
+             >
+    ValueInst * compileScalarSample(Tree sig, ArgumentIterator argsBegin, ArgumentIterator argsEnd,
+                                    FIRIndex const & index, compilePrimitiveFunctor const & generatePrimitive)
+    {
+        int resultNature = getSigType(sig)->nature();
+
+        vector<int> argumentNatures;
+        bool hasFloatArgs = false;
+        for (ArgumentIterator it = argsBegin; it != argsEnd; ++it) {
+            int nature = getSigType(*it)->nature();
+            argumentNatures.push_back(nature);
+            if (nature == kReal)
+                hasFloatArgs = true;
+        }
+
+        vector<ValueInst *> scalarArguments;
+        for (ArgumentIterator it = argsBegin; it != argsEnd; ++it) {
+            Tree arg = *it;
+            ValueInst * compiledArg = compileSample(arg, index);
+            int argumentNature = getSigType(arg)->nature();
+
+            if (hasFloatArgs && (argumentNature == kInt))
+                compiledArg = InstBuilder::genCastNumInst(compiledArg, InstBuilder::genBasicTyped(itfloat()));
+
+            scalarArguments.push_back(compiledArg);
+        }
+
+        ValueInst * result = generatePrimitive(scalarArguments.begin(), scalarArguments.end());
+
+        if (hasFloatArgs && (resultNature == kInt))
+            result = InstBuilder::genCastNumInst(result, InstBuilder::genBasicTyped(Typed::kInt));
 
         return result;
     }
