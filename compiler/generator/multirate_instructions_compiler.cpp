@@ -441,6 +441,32 @@ ValueInst * MultirateInstructionsCompiler::compileCast(Tree sig, Tree arg, Typed
     return dispatchPolymorphicFunctor(sig, arguments, index, CastFunctor(type), false);
 }
 
+ValueInst * MultirateInstructionsCompiler::compileSelect2(Tree sig, Tree selector, Tree x, Tree y, FIRIndex const & index)
+{
+    int t1 = getSigType(x)->nature();
+    int t2 = getSigType(y)->nature();
+
+    ValueInst* compiledSelector = compileSample(selector, index);
+    ValueInst* compiledX = compileSample(x, index);
+    ValueInst* compiledY = compileSample(y, index);
+
+    if (t1 == kReal &&
+        t2 == kInt)
+        compiledY = InstBuilder::genCastNumInst(compiledY, InstBuilder::genBasicTyped(itfloat()));
+
+    if (t1 == kInt &&
+        t2 == kReal)
+        compiledX = InstBuilder::genCastNumInst(compiledX, InstBuilder::genBasicTyped(itfloat()));
+
+    return InstBuilder::genSelect2Inst(compiledSelector, compiledX, compiledY);
+}
+
+ValueInst * MultirateInstructionsCompiler::compileSelect3(Tree sig, Tree selector, Tree x, Tree y, Tree z,
+                                                          FIRIndex const & index)
+{
+    throw std::runtime_error("internal error: Select3 instruction does not exist, yet");
+}
+
 
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex const & index)
 {
@@ -465,6 +491,14 @@ ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex c
         return compileCast(sig, x, Typed::kInt, index);
     if (isSigFloatCast(sig, x))
         return compileCast(sig, x, itfloat(), index);
+
+    if (isSigSelect2(sig, sel, x, y))
+        return compileSelect2(sig, sel, x, y, index);
+
+    if (isSigSelect3(sig, sel, x, y, z))
+        return compileSelect3(sig, sel, x, y, z, index);
+
+
 
 
     throw std::runtime_error("not implemented");

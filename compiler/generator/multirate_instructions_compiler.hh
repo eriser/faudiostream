@@ -60,6 +60,8 @@ private:
     ValueInst * compileFFun(Tree sig, Tree ff, Tree args, FIRIndex const & index);
     ValueInst * loadForeignVar(Tree sig, Tree type, Tree name, Tree file, FIRIndex const & index);
     ValueInst * compileCast(Tree sig, Tree arg, Typed::VarType type, FIRIndex const & index);
+    ValueInst * compileSelect2(Tree sig, Tree selector, Tree x, Tree y, FIRIndex const & index);
+    ValueInst * compileSelect3(Tree sig, Tree selector, Tree x, Tree y, Tree z, FIRIndex const & index);
 
     StatementInst * compileAssignmentVectorize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     StatementInst * compileAssignmentSerialize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1);
