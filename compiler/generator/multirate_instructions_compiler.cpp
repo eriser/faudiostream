@@ -467,6 +467,30 @@ ValueInst * MultirateInstructionsCompiler::compileSelect3(Tree sig, Tree selecto
     throw std::runtime_error("internal error: Select3 instruction does not exist, yet");
 }
 
+ValueInst * MultirateInstructionsCompiler::compileButton(Tree sig, Tree path, const string & name, FIRIndex const & index)
+{
+    string varname = getFreshID(name);
+    Typed* type = InstBuilder::genBasicTyped(Typed::kFloatMacro);
+
+    pushDeclare(InstBuilder::genDecStructVar(varname, type));
+    pushInitMethod(InstBuilder::genStoreStructVar(varname, InstBuilder::genRealNumInst(Typed::kFloatMacro, 0)));
+    addUIWidget(reverse(tl(path)), uiWidget(hd(path), tree(varname), sig));
+
+    return InstBuilder::genCastNumInst(InstBuilder::genLoadStructVar(varname), InstBuilder::genBasicTyped(itfloat()));
+}
+
+ValueInst* MultirateInstructionsCompiler::compileSlider(Tree sig, Tree path, Tree cur, Tree min, Tree max, Tree step,
+                                                        const string& name, FIRIndex const & index)
+{
+    string varname = getFreshID(name);
+    Typed* type = InstBuilder::genBasicTyped(Typed::kFloatMacro);
+
+    pushDeclare(InstBuilder::genDecStructVar(varname, type));
+    pushInitMethod(InstBuilder::genStoreStructVar(varname, InstBuilder::genRealNumInst(Typed::kFloatMacro, tree2float(cur))));
+    addUIWidget(reverse(tl(path)), uiWidget(hd(path), tree(varname), sig));
+
+    return InstBuilder::genCastNumInst(InstBuilder::genLoadStructVar(varname), InstBuilder::genBasicTyped(itfloat()));
+}
 
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex const & index)
 {
@@ -501,6 +525,17 @@ ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex c
     if (isSigPrefix(sig, x, y))
         throw std::runtime_error("sigPrefix is not implemented, yet");
 
+    if (isSigButton(sig, label))
+        return compileButton(sig, label, "fbutton", index);
+    if (isSigCheckbox(sig, label))
+        return compileButton(sig, label, "fcheckbox", index);
+
+    if (isSigVSlider(sig, label, c, x, y, z))
+        return compileSlider(sig, label, c, x, y, z, "fvslider", index);
+    if (isSigHSlider(sig, label, c, x, y, z))
+        return compileSlider(sig, label, c, x, y, z, "fhslider", index);
+    if (isSigNumEntry(sig, label, c, x, y, z))
+        return compileSlider(sig, label, c, x, y, z, "fentry", index);
 
     throw std::runtime_error("not implemented");
 }
