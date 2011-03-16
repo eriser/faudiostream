@@ -498,7 +498,8 @@ ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex c
     if (isSigSelect3(sig, sel, x, y, z))
         return compileSelect3(sig, sel, x, y, z, index);
 
-
+    if (isSigPrefix(sig, x, y))
+        throw std::runtime_error("sigPrefix is not implemented, yet");
 
 
     throw std::runtime_error("not implemented");
