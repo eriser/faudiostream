@@ -138,7 +138,8 @@ void CodeContainer::closeLoop(Tree sig)
     assert(fCurLoop);
 
     if ( (l->isEmpty() || l->hasRecDependencies())
-        && l->fRate == fCurLoop->fRate) {
+        && l->fRate == fCurLoop->fRate
+        && l->fLoopIndex == fCurLoop->fLoopIndex) {
         fCurLoop->absorb(l);
         delete l;
     } else {
