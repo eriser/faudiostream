@@ -678,6 +678,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRInde
     ArrayTyped* resultBufferType = declareArrayTyped(sigType, rate * gVecSize);
 
     DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultBufferType);
+    pushDeclare(declareResultBuffer);
 
     fContainer->openLoop(getFreshID("j_"), rate);
 
@@ -691,8 +692,8 @@ ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRInde
     CastAddress * castedResultAddress1 = InstBuilder::genCastAddress(resultAddress1, argType1);
     CastAddress * castedResultAddress2 = InstBuilder::genCastAddress(resultAddress2, argType2);
 
-    compileAssignment(castedResultAddress1, arg1, getCurrentLoopIndex());
-    compileAssignment(castedResultAddress2, arg2, getCurrentLoopIndex());
+    pushComputeDSPMethod(compileAssignment(castedResultAddress1, arg1, getCurrentLoopIndex()));
+    pushComputeDSPMethod(compileAssignment(castedResultAddress2, arg2, getCurrentLoopIndex()));
 
     fContainer->closeLoop();
 
