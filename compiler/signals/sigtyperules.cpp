@@ -581,17 +581,12 @@ static Type infereFFType (Tree ff, Tree ls, Tree env)
 	} else {
 		// otherwise variability and computability depends
 		// arguments (OR of all arg types)
-		Type t = new SimpleType(kInt,kKonst,kInit,kVect,kNum, interval());
+		AudioType * t = new SimpleType(kInt,kKonst,kInit,kVect,kNum, interval());
 		while (isList(ls)) { t = t|T(hd(ls),env); ls=tl(ls); }
-		// but the result type is defined by the function
 
-		//return t;
-		return new SimpleType(	ffrestype(ff),
-								t->variability(),
-								t->computability(),
-								t->vectorability(),
-								t->boolean(),
-								interval() );
+		// but the result type is defined by the function
+        AudioType * resultType = t->castNature(ffrestype(ff))->promoteInterval(interval());
+        return resultType;
 	}
 }
 
