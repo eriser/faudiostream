@@ -1,2 +1,3 @@
+sinh = ffunction ( float sinhf(float), <math.h> , "");
 asinh = ffunction ( float asinhf(float), <math.h> , "");
-process = asinh:vectorize(4):serialize:asinh;
+process = vectorize(4):sinh:serialize:asinh;
