@@ -141,6 +141,11 @@ class CodeLoop {
             return InstBuilder::genLoadLoopVar(fLoopIndex);
         }
 
+        int getLoopRate()
+        {
+            return fRate;
+        }
+
         ForLoopInst* generateScalarLoop(const string& counter);
 
         void generateDAGLoop(BlockInst* block, DeclareVarInst* count, bool omp);

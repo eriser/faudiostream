@@ -88,6 +88,11 @@ private:
     ArrayTyped * declareArrayTyped(Typed * typed, int size);
 
     ForLoopInst* genSubloop(string const & loopSymbol, int lowBound, int highBound);
+    int getCurrentRate(void) const
+    {
+        return fContainer->getCurLoop()->getLoopRate();
+    }
+
 
     ValueInst * fVectorSize;
 
@@ -114,6 +119,8 @@ private:
         const int sigRate = getSigRate(sig);
         Typed * resultTyped = declareSignalType(sig);
         const size_t argumentCount = argsEnd - argsBegin;
+
+        fContainer->openLoop(getFreshID("j_"), sigRate);
 
         vector<ValueInst*> args;
         vector<Typed*> argTypes;
@@ -203,8 +210,10 @@ private:
                                                                 storeIndex.begin(), storeIndex.end());
         loopTop->pushBackInst(store);
 
+        fContainer->closeLoop();
+
         ValueInst * result = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(resultBuffer->fAddress,
-                                                                                        getCurrentLoopIndex()));
+                                                                                        index));
 
         return result;
     }

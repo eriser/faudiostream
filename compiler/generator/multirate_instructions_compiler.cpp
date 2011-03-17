@@ -177,7 +177,7 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * dest,
         return compileAssignmentAt(dest, sig, index, arg1, arg2);
 
     if (isPrimitive(sig))
-        return store(dest, compileSample(sig, index));
+        return store(dest, compileSamplePrimitive(sig, index));
 
     if (isSigFixDelay(sig, arg1, arg2))
         return store(dest, compileSample(sig, index));
@@ -618,20 +618,21 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
     Typed * sigType = declareSignalType(sig);
     Typed * argType = declareSignalType(arg1);
 
-    int m = getSigRate(arg1);
-    int n = getSigRate(sig) / getSigRate(arg1);
+    int argumentRate = getSigRate(arg1);    // m
+    int sigRate = getSigRate(sig);          // n*m
+    int rateFactor = sigRate / argumentRate;
 
-    int loopSize = n * m;
+    int loopSize = sigRate * argumentRate;
 
-    ArrayTyped* resultBufferType = declareArrayTyped(sigType, loopSize * gVecSize);
+    ArrayTyped* resultBufferType = declareArrayTyped(sigType, sigRate * gVecSize);
 
     DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultBufferType);
     pushDeclare(declareResultBuffer);
 
-    fContainer->openLoop(getFreshID("j_"), loopSize);
+    fContainer->openLoop(getFreshID("j_"), sigRate);
 
     ValueInst * condition = InstBuilder::genBinopInst(kEQ,
-                                                      InstBuilder::genBinopInst(kRem, getCurrentLoopIndex(), InstBuilder::genIntNumInst(n)),
+                                                      InstBuilder::genBinopInst(kRem, getCurrentLoopIndex(), InstBuilder::genIntNumInst(rateFactor)),
                                                       InstBuilder::genIntNumInst(0));
 
 
@@ -643,7 +644,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
                                                                          getCurrentLoopIndex());
     CastAddress * castedDestiationAddress = InstBuilder::genCastAddress(destinationAddress, argType);
 
-    FIRIndex compileIndex = getCurrentLoopIndex() / n;
+    FIRIndex compileIndex = getCurrentLoopIndex() / sigRate;
     BlockInst * thenCase = InstBuilder::genBlockInst();
     thenCase->pushBackInst(compileAssignment(castedDestiationAddress, arg1, compileIndex));
 
