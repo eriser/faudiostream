@@ -558,6 +558,14 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentVectorize(Addres
 
 ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2)
 {
+    ValueInst * alreadyCompiledExpression;
+    if (getCompiledExpression(sig, alreadyCompiledExpression)) {
+        LoadVarInst * bufferHandle = dynamic_cast<LoadVarInst*>(alreadyCompiledExpression);
+        IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(bufferHandle->fAddress, index);
+        return InstBuilder::genLoadVarInst(addressToReturn);
+    }
+
+
     int n = tree2int(arg2);
 
     int sigRate = getSigRate(sig);
@@ -566,16 +574,16 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
     ArrayTyped * resultBufferType = declareArrayTyped(sigTyped, sigRate * gVecSize);
 
     DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultBufferType);
-
     pushDeclare(declareResultBuffer);
+    setCompiledExpression(sig, declareResultBuffer->load()); // cache the load handle to the result buffer
 
     fContainer->openLoop(getFreshID("j_"), sigRate);
 
     ForLoopInst * subloop = genSubloop("k", 0, n);
 
     NamedAddress * resultBufferAddress = InstBuilder::genNamedAddress(declareResultBuffer->getName(),
-                                                                        Address::kStack,
-                                                                        resultBufferType);
+                                                                      Address::kStack,
+                                                                      resultBufferType);
 
     IndexedAddress * compileAddress = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(resultBufferAddress,
                                                                                                     getCurrentLoopIndex()),
@@ -615,6 +623,13 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Addres
 
 ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRIndex const & index, Tree arg1)
 {
+    ValueInst * alreadyCompiledExpression;
+    if (getCompiledExpression(sig, alreadyCompiledExpression)) {
+        LoadVarInst * bufferHandle = dynamic_cast<LoadVarInst*>(alreadyCompiledExpression);
+        IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(bufferHandle->fAddress, index);
+        return InstBuilder::genLoadVarInst(addressToReturn);
+    }
+
     Typed * sigType = declareSignalType(sig);
     Typed * argType = declareSignalType(arg1);
 
@@ -622,12 +637,11 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
     int sigRate = getSigRate(sig);          // n*m
     int rateFactor = sigRate / argumentRate;
 
-    int loopSize = sigRate * argumentRate;
-
     ArrayTyped* resultBufferType = declareArrayTyped(sigType, sigRate * gVecSize);
 
     DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultBufferType);
     pushDeclare(declareResultBuffer);
+    setCompiledExpression(sig, declareResultBuffer->load()); // cache the load handle to the result buffer
 
     fContainer->openLoop(getFreshID("j_"), sigRate);
 
@@ -660,6 +674,13 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
 
 ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2)
 {
+    ValueInst * alreadyCompiledExpression;
+    if (getCompiledExpression(sig, alreadyCompiledExpression)) {
+        LoadVarInst * bufferHandle = dynamic_cast<LoadVarInst*>(alreadyCompiledExpression);
+        IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(bufferHandle->fAddress, index);
+        return InstBuilder::genLoadVarInst(addressToReturn);
+    }
+
     int rate = getSigRate(sig);
     assert(getSigRate(sig) == getSigRate(arg1) && getSigRate(sig) == getSigRate(arg2));
 
@@ -674,6 +695,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRInde
 
     DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultBufferType);
     pushDeclare(declareResultBuffer);
+    setCompiledExpression(sig, declareResultBuffer->load()); // cache the load handle to the result buffer
 
     fContainer->openLoop(getFreshID("j_"), rate);
 
