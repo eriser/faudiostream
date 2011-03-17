@@ -246,26 +246,28 @@ ValueInst * MultirateInstructionsCompiler::compileSampleInput(Tree sig, int i, F
 ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRIndex const & index)
 {
     if (isShared(sig)) {
-        ValueInst * compiledInstruction;
-        DeclareVarInst * cachedValue;
-        if (getCompiledExpression(sig, compiledInstruction)) {
-            cachedValue = dynamic_cast<DeclareVarInst*>(compiledInstruction);
-        } else {
-            int rate = getSigRate(sig);
-
-            Typed * sampleTyped = declareSignalType(sig);
-            ArrayTyped* sampleArrayType = declareArrayTyped(sampleTyped, rate * gVecSize);
-
-            cachedValue = InstBuilder::genDecStackVar(getFreshID("cacheVector"), sampleArrayType);
-            pushDeclare(cachedValue);
-
-            fContainer->openLoop(getFreshID("i_"), rate);
-            IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(cachedValue->getAddress(), getCurrentLoopIndex());
-            pushComputeDSPMethod(store(storeAddress, compilePrimitive(sig, index)));
-            fContainer->closeLoop();
+        ValueInst * alreadyCompiledExpression;
+        if (getCompiledExpression(sig, alreadyCompiledExpression)) {
+            LoadVarInst * bufferHandle = dynamic_cast<LoadVarInst*>(alreadyCompiledExpression);
+            IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(bufferHandle->fAddress, index);
+            return InstBuilder::genLoadVarInst(addressToReturn);
         }
 
-        IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(cachedValue->getAddress(), index);
+        int rate = getSigRate(sig);
+
+        Typed * sampleTyped = declareSignalType(sig);
+        ArrayTyped* sampleArrayType = declareArrayTyped(sampleTyped, rate * gVecSize);
+
+        DeclareVarInst * declareCacheBuffer = InstBuilder::genDecStackVar(getFreshID("cacheVector"), sampleArrayType);
+        pushDeclare(declareCacheBuffer);
+        setCompiledExpression(sig, declareCacheBuffer->load());
+
+        fContainer->openLoop(getFreshID("i_"), rate);
+        IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), getCurrentLoopIndex());
+        pushComputeDSPMethod(store(storeAddress, compilePrimitive(sig, index)));
+        fContainer->closeLoop();
+
+        IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), index);
         return InstBuilder::genLoadVarInst(addressToReturn);
 
     } else {
