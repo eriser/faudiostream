@@ -259,6 +259,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
             ArrayTyped* sampleArrayType = declareArrayTyped(sampleTyped, rate * gVecSize);
 
             cachedValue = InstBuilder::genDecStackVar(getFreshID("cacheVector"), sampleArrayType);
+            pushDeclare(cachedValue);
 
             fContainer->openLoop(getFreshID("i_"), rate);
             IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(cachedValue->getAddress(), getCurrentLoopIndex());
@@ -624,7 +625,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
 
     int loopSize = n * m;
 
-    ArrayTyped* resultBufferType = declareArrayTyped(sigType, loopSize);
+    ArrayTyped* resultBufferType = declareArrayTyped(sigType, loopSize * gVecSize);
 
     DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultBufferType);
     pushDeclare(declareResultBuffer);
