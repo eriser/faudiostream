@@ -307,7 +307,6 @@ void CodeLoop::concat(CodeLoop* l)
 }
 
 // Graph sorting
-
 void CodeLoop::setOrder(CodeLoop* l, int order, lclgraph& V)
 {
     assert(l);

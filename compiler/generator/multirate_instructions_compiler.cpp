@@ -64,7 +64,6 @@ void MultirateInstructionsCompiler::compileMultiSignal(Tree L)
         pushDeclare(InstBuilder::genDecStructVar(name2, type));
     }
 
-
     compileTop(L);
 
     generateUserInterfaceTree(prepareUserInterfaceTree(fUIRoot));
@@ -97,13 +96,11 @@ void MultirateInstructionsCompiler::compileTop(Tree rootSignal)
         string outputName;
         Loki::SPrintf(outputName, "fOutput%d")(i);
 
-        NamedAddress * outI = InstBuilder::genVectorAddress(outputName, InstBuilder::genBasicTyped(Typed::kFloat),
-                                                            0, // arbitrary size
-                                                            Address::kFunArgs); // FIXME: what is the access type?
+        NamedAddress * outI = InstBuilder::genNamedAddress(outputName, Address::kStruct, InstBuilder::genArrayTyped(InstBuilder::genBasicTyped(Typed::kFloat), 0));
+
         compileVector(outI, sig);
     }
 }
-
 
 void MultirateInstructionsCompiler::compileVector(NamedAddress * vec, Tree sig)
 {
@@ -241,7 +238,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleInput(Tree sig, int i, F
     fContainer->setInputRate(i, rate);
 
     string name = subst("fInput$0", T(i));
-    LoadVarInst * res = InstBuilder::genLoadArrayStackVar(name, index);
+    LoadVarInst * res = InstBuilder::genLoadArrayStructVar(name, index);
 
     ValueInst * castedToFloat = InstBuilder::genCastNumInst(res, InstBuilder::genBasicTyped(itfloat()));
     return castedToFloat;
@@ -577,10 +574,9 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
 
     ForLoopInst * subloop = genSubloop("k", 0, n);
 
-    NamedAddress * resultBufferAddress = InstBuilder::genVectorAddress(declareResultBuffer->getName(),
-                                                                        resultBufferType->fType,
-                                                                        resultBufferType->fSize,
-                                                                        Address::kStack);
+    NamedAddress * resultBufferAddress = InstBuilder::genNamedAddress(declareResultBuffer->getName(),
+                                                                        Address::kStack,
+                                                                        resultBufferType);
 
     IndexedAddress * compileAddress = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(resultBufferAddress,
                                                                                                     getCurrentLoopIndex()),
@@ -640,10 +636,9 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
                                                       InstBuilder::genIntNumInst(0));
 
 
-    NamedAddress * resultBufferAddress = InstBuilder::genVectorAddress(declareResultBuffer->getName(),
-                                                                        resultBufferType->fType,
-                                                                        resultBufferType->fSize,
-                                                                        Address::kStack);
+    NamedAddress * resultBufferAddress = InstBuilder::genNamedAddress(declareResultBuffer->getName(),
+                                                                         Address::kStack,
+                                                                        resultBufferType);
 
     IndexedAddress * destinationAddress = InstBuilder::genIndexedAddress(resultBufferAddress,
                                                                          getCurrentLoopIndex());
