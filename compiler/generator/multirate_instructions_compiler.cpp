@@ -106,13 +106,11 @@ void MultirateInstructionsCompiler::compileVector(NamedAddress * vec, Tree sig)
 {
     int sigRate = getSigRate(sig);
 
-    ForLoopInst * subloop = genSubloop("j", 0, sigRate);
-
-    FIRIndex index = getCurrentLoopIndex() * sigRate + subloop->loadDeclaration();
+    fContainer->openLoop(getFreshID("j_"), sigRate);
+    FIRIndex index(getCurrentLoopIndex());
     IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(vec, index);
-    subloop->pushFrontInst(compileAssignment(storeAddress, sig, index));
-
-    pushComputeDSPMethod(subloop);
+    pushComputeDSPMethod(compileAssignment(storeAddress, sig, index));
+    fContainer->closeLoop();
 }
 
 static bool isPrimitive(Tree sig)
