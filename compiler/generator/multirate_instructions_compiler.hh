@@ -66,6 +66,10 @@ private:
     ValueInst * compileButton(Tree sig, Tree path, const string & name, FIRIndex const & index);
     ValueInst * compileSlider(Tree sig, Tree path, Tree cur, Tree min, Tree max, Tree step, const string& name, FIRIndex const & index);
 
+    ValueInst * compileSampleRDTable(Tree sig, FIRIndex const & index, Tree table, Tree tableIndex);
+    ValueInst * compileSampleWRTable(Tree sig, FIRIndex const & index, Tree table, Tree writeIndex, Tree writeStream);
+    NamedAddress * generateTable(Tree table, Tree tableID, Tree tableSize, Tree tableInitializationSignal, bool canBeShared);
+
     StatementInst * compileAssignmentVectorize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     StatementInst * compileAssignmentSerialize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1);
     StatementInst * compileAssignmentConcat(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);

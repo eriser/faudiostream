@@ -116,17 +116,13 @@ void MultirateInstructionsCompiler::compileVector(NamedAddress * vec, Tree sig)
 static bool isPrimitive(Tree sig)
 {
     int     i;
-    Tree    c, sel, x, y, z, label, id, ff, largs, type, name, file;
+    Tree    c, sel, x, y, z, label, ff, largs, type, name, file;
 
     if (   getUserData(sig)
         || isSigBinOp(sig, &i, x, y)
         || isSigFFun(sig, ff, largs)
         || isSigFConst(sig, type, name, file)
         || isSigFVar(sig, type, name, file)
-
-        || isSigTable(sig, id, x, y)
-        || isSigWRTbl(sig, id, x, y, z)
-        || isSigRDTbl(sig, x, y)
 
         || isSigSelect2(sig, sel, x, y)
         || isSigSelect3(sig, sel, x, y, z)
@@ -185,6 +181,14 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * dest,
     if (isProj(sig, &i, arg2))
         return compileAssignmentProjection(dest, sig, index, i, arg2);
 
+    Tree table, tableIndex;
+    if (isSigRDTbl(sig, table, tableIndex))
+        return store(dest, compileSampleRDTable(sig, index, table, tableIndex));
+
+    Tree tableID, tableWriteSignal;
+    if (isSigWRTbl(sig, tableID, table, tableIndex, tableWriteSignal))
+        return store(dest, compileSampleWRTable(sig, index, table, tableID, tableWriteSignal));
+
     throw std::runtime_error("not implemented");
     return NULL;
 }
@@ -225,6 +229,13 @@ ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, FIRIndex cons
         // invariant: projections are followed by delay lines. therefore direct sample computation are not possible
         throw std::logic_error("internal error: compiling sample from projection");
 
+    Tree table, tableIndex;
+    if (isSigRDTbl(sig, table, tableIndex))
+        return compileSampleRDTable(sig, index, table, tableIndex);
+
+    Tree tableID, tableWriteSignal;
+    if (isSigWRTbl(sig, tableID, table, tableIndex, tableWriteSignal))
+        return compileSampleWRTable(sig, index, table, tableID, tableWriteSignal);
 
     throw std::runtime_error("not implemented");
     return NULL;
@@ -490,11 +501,11 @@ ValueInst* MultirateInstructionsCompiler::compileSlider(Tree sig, Tree path, Tre
     return InstBuilder::genCastNumInst(InstBuilder::genLoadStructVar(varname), InstBuilder::genBasicTyped(itfloat()));
 }
 
+
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex const & index)
 {
     int     i;
-    double  r;
-    Tree    c, sel, x, y, z, label, id, ff, largs, type, name, file;
+    Tree    c, sel, x, y, z, label, ff, largs, type, name, file;
 
     if (isSigBinOp(sig, &i, x, y))
         return compileBinop(sig, i, x, y, index);
@@ -955,6 +966,50 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentProjection(Addre
     ValueInst * compiledExpression = compileSample(expressionToCompute, index);
     StatementInst * storeInst = store(vec, compiledExpression);
     return storeInst;
+}
+
+
+ValueInst * MultirateInstructionsCompiler::compileSampleRDTable(Tree sig, FIRIndex const & index, Tree table, Tree tableIndex)
+{
+    NamedAddress * tableAddress;
+
+    Tree tableID, tableSize, tableInitializationSignal, writeTable, writeIndex, writeSignal;
+    if (isSigTable(table, tableID, tableSize, tableInitializationSignal))
+        tableAddress = generateTable(table, tableID, tableSize, tableInitializationSignal, true);
+    else if (isSigWRTbl(table, tableID, writeTable, writeIndex, writeSignal)) {
+        ValueInst * tableInst = compileSampleWRTable(table, index, writeTable, writeIndex, writeSignal);
+        LoadVarInst* loadTable = dynamic_cast<LoadVarInst*>(tableInst);
+        tableAddress = dynamic_cast<NamedAddress*>(loadTable->fAddress);
+    } else
+        throw std::logic_error("the table signal needs to be a sigTable or a sigWRTbl");
+
+    ValueInst * readIndex = compileSample(tableIndex, index);
+    IndexedAddress * readAddress = InstBuilder::genIndexedAddress(tableAddress, readIndex);
+    return InstBuilder::genLoadVarInst(readAddress);
+}
+
+ValueInst * MultirateInstructionsCompiler::compileSampleWRTable(Tree sig, FIRIndex const & index, Tree table,
+                                                                Tree writeIndex, Tree writeStream)
+{
+    Tree tableID, tableSize, tableInitializationSignal;
+    ensure (isSigTable(table, tableID, tableSize, tableInitializationSignal));
+    NamedAddress * tableAddress = generateTable(table, tableID, tableSize, tableInitializationSignal, false);
+
+    ValueInst * compiledWriteIndex  = compileSample(writeIndex, index);
+    ValueInst * compiledWriteStream = compileSample(writeStream, index);
+
+    IndexedAddress * writeAddress = InstBuilder::genIndexedAddress(tableAddress, compiledWriteIndex);
+
+    pushComputeDSPMethod(InstBuilder::genStoreVarInst(writeAddress, compiledWriteStream));
+
+    return InstBuilder::genLoadVarInst(tableAddress);
+}
+
+NamedAddress * MultirateInstructionsCompiler::generateTable(Tree table, Tree tableID, Tree tableSize,
+                                                            Tree tableInitializationSignal, bool canBeShared)
+{
+    // FIXME: allocate, initialize and cache table
+    return NULL;
 }
 
 
