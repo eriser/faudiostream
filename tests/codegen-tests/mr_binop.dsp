@@ -1,1 +1,1 @@
-process = *(2):vectorize(4):serialize:+(1);
+process = vectorize(4):+(1.0):serialize;
