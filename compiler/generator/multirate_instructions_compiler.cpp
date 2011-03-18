@@ -1008,8 +1008,34 @@ ValueInst * MultirateInstructionsCompiler::compileSampleWRTable(Tree sig, FIRInd
 NamedAddress * MultirateInstructionsCompiler::generateTable(Tree table, Tree tableID, Tree tableSize,
                                                             Tree tableInitializationSignal, bool canBeShared)
 {
-    // FIXME: allocate, initialize and cache table
-    return NULL;
+    ValueInst * alreadyCompiledExpression;
+    if (getCompiledExpression(table, alreadyCompiledExpression)) {
+        LoadVarInst * bufferHandle = dynamic_cast<LoadVarInst*>(alreadyCompiledExpression);
+        NamedAddress * tableAddress = dynamic_cast<NamedAddress*>(bufferHandle->fAddress);
+        return tableAddress;
+    }
+
+    AudioType * signalType = getSigType(table);
+    TableType * tableSignalType = isTableType(signalType);
+    AudioType * contentType = tableSignalType->content();
+    Typed * signalTyped = declareSignalType(contentType);
+    assert(contentType == getSigType(tableInitializationSignal).pointee());
+
+    int iTableSize;
+    ensure(isSigInt(tableSize, &iTableSize));
+
+    Tree tableContent;
+    ensure(isSigGen(tableInitializationSignal, tableContent));
+
+    Typed * tableTyped = declareArrayTyped(signalTyped, iTableSize);
+    DeclareVarInst * declareTable = InstBuilder::genDecStructVar(getFreshID("table_"), tableTyped);
+    pushDeclare(declareTable);
+    setCompiledExpression(table, declareTable->load());
+
+    // FIXME: initialize table
+    // FIXME: declare shared tables as static
+    NamedAddress * returnAddress = dynamic_cast<NamedAddress*>(declareTable->fAddress);
+    return returnAddress;
 }
 
 
