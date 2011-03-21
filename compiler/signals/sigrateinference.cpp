@@ -305,9 +305,9 @@ RateMap doInferRateDispatch(Tree sig)
     else if (isSigAttach(sig, s1, s2))                  return propagateRate(s1, s2);
     else if (isRec(sig, var, body))                     return infereRecRate(var, body);
     else if (isProj(sig, &i, s1))                       return infereProjRate(i, s1);
-    else if (isSigTable(sig, id, s1, s2))               return propagateRate(s2, s3);
+    else if (isSigTable(sig, id, s1, s2))               return propagateRate(s1, s2);
     else if (isSigWRTbl(sig, id, s1, s2, s3))           return propagateRate(s1, s2, s3);
-    else if (isSigRDTbl(sig, s1, s2))                   return propagateRate(s2);
+    else if (isSigRDTbl(sig, s1, s2))                   return propagateRate(s1, s2);
     else if (isSigGen(sig, s1))                         return propagateRate(s1);
     else if (isSigDocConstantTbl(sig, x, y) )           return RateMap();
     else if (isSigDocWriteTbl(sig,x,y,z,u) )            return RateMap();
