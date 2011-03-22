@@ -335,6 +335,28 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
     }
 }
 
+void MultirateInstructionsCompiler::setCompiledCache(Tree sig, LoadVarInst * loadCacheInst)
+{
+    setCompiledExpression(sig, loadCacheInst);
+    setLoopProperty(sig, fContainer->getCurLoop());
+}
+
+Address * MultirateInstructionsCompiler::getCompiledCache(Tree sig)
+{
+    ValueInst * compiledExpression;
+    if (getCompiledExpression(sig, compiledExpression)) {
+        LoadVarInst * bufferHandle = dynamic_cast<LoadVarInst*>(compiledExpression);
+        Address * returnAddress = bufferHandle->fAddress;
+
+        CodeLoop * loop;
+        ensure(getLoopProperty(sig, loop));
+        fContainer->getCurLoop()->addBackwardDependency(loop);
+
+        return returnAddress;
+    } else
+        return NULL;
+}
+
 
 struct ScalarBinopFunctor
 {
@@ -665,7 +687,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
 StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Address * vec, Tree sig,
                                                                           FIRIndex const & index, Tree arg1)
 {
-    if (!isShared(sig)) {
+    if (true || !isShared(sig)) {
         int n = getSigRate(sig) / getSigRate(arg1);
         Typed * argType = declareSignalType(arg1);
 

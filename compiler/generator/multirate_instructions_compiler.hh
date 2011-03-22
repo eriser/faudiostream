@@ -82,6 +82,11 @@ private:
     Address * compileDelayline(Tree delayline);
     Address * declareDelayLine(Tree delayline);
 
+
+    // cache handling
+    void setCompiledCache(Tree sig, LoadVarInst * loadCacheInst);
+    Address * getCompiledCache(Tree sig); // implicitly adds graph dependency
+
     // helper functions
     StatementInst * store (Address * address, ValueInst * value);
     LoadVarInst * loadCount(void)
