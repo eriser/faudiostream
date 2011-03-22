@@ -222,7 +222,7 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * dest,
         return store(dest, compileSamplePrimitive(sig, index));
 
     if (isSigFixDelay(sig, arg1, arg2))
-        return store(dest, compileSample(sig, index));
+        return store(dest, compileSampleDelay(sig, index, arg1, arg2));
 
     if (isProj(sig, &i, arg2))
         return compileAssignmentProjection(dest, sig, index, i, arg2);
@@ -311,6 +311,9 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
         }
 
         int rate = getSigRate(sig);
+
+        if (rate == 0) // FIXME: for now, block-rate signals will be resampled to the basic audio rate.
+            rate = 1;
 
         Typed * sampleTyped = declareSignalType(sig);
         ArrayTyped* sampleArrayType = declareArrayTyped(sampleTyped, rate * gVecSize);
@@ -852,8 +855,11 @@ static int getDelaylineRate(Tree delayedSignal)
         ensure(isRec(recursiveGroup, id, body));
         return getDelaylineRate(nth(body, i));
     }
-    assert(false);
 
+    // block-rate signals have a rate of one
+    AudioType * delayedSignalType = getSigType(delayedSignal);
+    assert(delayedSignalType->variability() < kSamp);
+    return 1;
 }
 
 Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
@@ -941,13 +947,14 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
 
     fContainer->closeLoop();
 
-    CodeLoop * delayWriteLoop = fContainer->getCurLoop();
-
 
     Address * address = InstBuilder::genIndexedAddress(RM->fAddress, FIRIndex(getCurrentLoopIndex()) + maxDelay);
     pushComputeDSPMethod(compileAssignment(address, arg, getCurrentLoopIndex()));
 
     fContainer->closeLoop();
+
+    CodeLoop * delayWriteLoop = fContainer->getCurLoop();
+
 
     ForLoopInst * writeBackLoop = genSubloop("j", 0, maxDelay);
     FIRIndex loadRMIndex = FIRIndex(writeBackLoop->loadDeclaration()) + (sigRate * gVecSize);
