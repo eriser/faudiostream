@@ -303,11 +303,17 @@ class CodeContainer {
             }
         }
 
+        int getSubContainerType() const
+        {
+            return fSubContainerType;
+        }
+
+
         // UI construction
         void addUIMacro(const string& str)  { fUIMacro.push_back(str); }
         void addUICode(const string& str)	{ fUICode.push_back(str); }
 
-        virtual CodeContainer* createScalarContainer(const string& name, int sub_container_type) = 0;
+        virtual CodeContainer* createInternalContainer(const string& name, int sub_container_type) = 0;
 
         virtual void produceInternal() = 0;
         virtual void produceClass() {}

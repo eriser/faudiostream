@@ -46,7 +46,7 @@ extern bool gVectorSwitch;
 extern map<Tree, set<Tree> > gMetaDataSet;
 map <string, int> CInstVisitor::gGlobalTable;
 
-CodeContainer* CCodeContainer::createScalarContainer(const string& name, int sub_container_type)
+CodeContainer* CCodeContainer::createInternalContainer(const string& name, int sub_container_type)
 {
     return new CScalarCodeContainer("", 0, 1, fOut, sub_container_type, name);
 }

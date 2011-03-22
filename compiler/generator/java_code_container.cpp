@@ -84,7 +84,7 @@ CodeContainer* JAVACodeContainer::createContainer(int numInputs, int numOutputs,
 JAVAScalarCodeContainer::~JAVAScalarCodeContainer()
 {}
 
-CodeContainer* JAVACodeContainer::createScalarContainer(const string& name, int sub_container_type)
+CodeContainer* JAVACodeContainer::createInternalContainer(const string& name, int sub_container_type)
 {
     return new JAVAScalarCodeContainer(name, "", 0, 1, fOut, sub_container_type);
 }

@@ -51,7 +51,7 @@ protected:
         initializeCodeContainer(numInputs, numOutputs);
     }
 
-    CodeContainer* createScalarContainer(const string& name, int sub_container_type);
+    CodeContainer* createInternalContainer(const string& name, int sub_container_type);
     void produceInternal() {}
 
 private:

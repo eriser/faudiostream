@@ -49,7 +49,7 @@ extern bool gFunTaskSwitch;
 extern map<Tree, set<Tree> > gMetaDataSet;
 map <string, int> CPPInstVisitor::gGlobalTable;
 
-CodeContainer* CPPCodeContainer::createScalarContainer(const string& name, int sub_container_type)
+CodeContainer* CPPCodeContainer::createInternalContainer(const string& name, int sub_container_type)
 {
     return new CPPScalarCodeContainer(name, "", 0, 1, fOut, sub_container_type);
 }
@@ -502,6 +502,13 @@ CPPMRCodeContainer::CPPMRCodeContainer(const string& name, const string& super, 
     fFullCount = "fullcount";
 }
 
+CPPMRCodeContainer::CPPMRCodeContainer(const string& name, const string& super, int numInputs, int numOutputs, std::ostream* out, int sub_container_type)
+    : CPPCodeContainer(name, super, numInputs, numOutputs, out)
+{
+    fFullCount = "fullcount";
+    fSubContainerType = sub_container_type;
+}
+
 void CPPMRCodeContainer::generateCompute(int n)
 {
     // Generates declaration
@@ -518,4 +525,146 @@ void CPPMRCodeContainer::generateCompute(int n)
     mrBlock->accept(&fCodeProducer);
 
     tab(n+1, *fOut); *fOut << "}";
+}
+
+StatementInst* CPPMRCodeContainer::generateDAGLoopVariant0(const string& counter)
+{
+    string index = "index";
+
+    // Define result block
+    BlockInst* block_res = InstBuilder::genBlockInst();
+
+    // Declare the "index" variable outside the loop
+    DeclareVarInst* index_dec = InstBuilder::genDecStackVar(index, InstBuilder::genBasicTyped(Typed::kInt));
+    block_res->pushBackInst(index_dec);
+    block_res->pushBackInst(InstBuilder::genLabelInst("// Main loop"));
+
+    BlockInst* loop_code = InstBuilder::genBlockInst();
+
+    // Generate local input/output access
+    generateLocalInputs(loop_code);
+    generateLocalOutputs(loop_code);
+
+    // Generate : int count = 32;
+    DeclareVarInst* count_dec1 = InstBuilder::genDecStackVar("count", InstBuilder::genBasicTyped(Typed::kInt), InstBuilder::genIntNumInst(gVecSize));
+    loop_code->pushBackInst(count_dec1);
+
+    // Generates the loop DAG
+    generateDAGLoop(loop_code, count_dec1);
+
+    // Generates the DAG enclosing loop
+    StoreVarInst* loop_init = index_dec->store(InstBuilder::genIntNumInst(0));
+
+    ValueInst* loop_end = InstBuilder::genBinopInst(kLE, index_dec->load(),
+        InstBuilder::genSub(InstBuilder::genLoadFunArgsVar(counter), InstBuilder::genIntNumInst(gVecSize)));
+
+    StoreVarInst* loop_increment = index_dec->store(InstBuilder::genAdd(index_dec->load(), gVecSize));
+
+    StatementInst* loop = InstBuilder::genForLoopInst(loop_init, loop_end, loop_increment, loop_code);
+
+    // Put loop in block_res
+    block_res->pushBackInst(loop);
+
+    // Remaining frames
+    block_res->pushBackInst(InstBuilder::genLabelInst("// Remaining frames"));
+
+    ValueInst* if_cond = InstBuilder::genLessThan(InstBuilder::genLoadStackVar(index), InstBuilder::genLoadFunArgsVar(counter));
+
+    BlockInst* then_block = InstBuilder::genBlockInst();
+
+    // Generate local input/output access
+    generateLocalInputs(then_block);
+    generateLocalOutputs(then_block);
+
+    // Generate : int count = fullcount-index;
+    DeclareVarInst* count_dec2 = InstBuilder::genDecStackVar("count", InstBuilder::genBasicTyped(Typed::kInt), InstBuilder::genBinopInst(kSub,
+                                    InstBuilder::genLoadFunArgsVar(counter), InstBuilder::genLoadStackVar(index)));
+
+    then_block->pushBackInst(count_dec2);
+
+    // Generates the loop DAG
+    generateDAGLoop(then_block, count_dec2);
+
+    block_res->pushBackInst(InstBuilder::genIfInst(if_cond, then_block));
+    return block_res;
+}
+
+void CPPMRCodeContainer::produceInternal()
+{
+    int n = 0;
+
+    // Global declarations
+    tab(n, *fOut);
+
+    fCodeProducer.Tab(n);
+    generateGlobalDeclarations(&fCodeProducer);
+
+    tab(n, *fOut); *fOut << "class " << fKlassName << " {";
+
+        tab(n+1, *fOut);
+
+        if (gUIMacroSwitch) {
+            tab(n, *fOut); *fOut << "  public:";
+        } else {
+            tab(n, *fOut); *fOut << "  private:";
+        }
+        tab(n+1, *fOut);
+        tab(n+1, *fOut);
+
+        // Fields
+        fCodeProducer.Tab(n+1);
+        generateDeclarations(&fCodeProducer);
+
+    tab(n, *fOut); *fOut << "  public:";
+
+        tab(n+1, *fOut);
+        produceInfoFunctions(n+1, fKlassName, false);
+
+        // Inits
+        tab(n+1, *fOut); *fOut << "void instanceInit (int samplingFreq) {";
+            tab(n+2, *fOut);
+            fCodeProducer.Tab(n+2);
+            generateInit(&fCodeProducer);
+        tab(n+1, *fOut); *fOut << "}";
+
+        // Fill
+        string counter = "fullCount";
+        tab(n+1, *fOut);
+        string fillArguments;
+        if (fSubContainerType == kInt)
+            fillArguments = subst("int $0, int* output", counter);
+        else
+            fillArguments = subst("int $0, $1* output", counter, ifloat());
+
+        tab(n+1, *fOut); *fOut << "void fill (" << fillArguments << ") {";
+
+        tab(n+2, *fOut);
+        fCodeProducer.Tab(n+2);
+        generateComputeBlock(&fCodeProducer);
+
+        StatementInst * block = generateDAGLoopVariant0(counter);
+        block->accept(&fCodeProducer);
+        tab(n+1, *fOut); *fOut << "}";
+
+    tab(n, *fOut); *fOut << "};" << endl;
+
+    // wrapper methods (as globals)
+    tab(n, *fOut); *fOut << "static " << fKlassName << "* " << "new" <<  fKlassName << "() { "
+                        << "return (" << fKlassName << "*) new "<< fKlassName << "()"
+                        << "; }";
+
+    tab(n, *fOut); *fOut << "static void delete" << fKlassName << "(" << fKlassName << "* dsp) { "
+                        << "delete dsp"
+                        << "; }";
+
+    tab(n, *fOut); *fOut << "static void fill" << fKlassName << "(" << fKlassName << "* dsp, " << fillArguments << ") { "
+                        << "dsp->fill(" << counter << ", output)"
+                        << "; }";
+
+    tab(n, *fOut); *fOut << "static void instanceInit" << fKlassName << "(" << fKlassName << "* dsp, float samplingFreq) { "
+                        << "dsp->instanceInit(samplingFreq)"
+                        << "; }";
+
+
+    tab(n, *fOut);
 }

@@ -68,7 +68,7 @@ class CPPCodeContainer : public virtual CodeContainer {
         virtual void generateCompute(int tab) = 0;
         virtual void produceInternal();
 
-        CodeContainer* createScalarContainer(const string& name, int sub_container_type);
+        CodeContainer* createInternalContainer(const string& name, int sub_container_type);
 
         static CodeContainer* createContainer(int numInputs, int numOutputs, ostream* dst);
 
@@ -134,7 +134,15 @@ class CPPMRCodeContainer : public CPPCodeContainer {
         BlockInst * mrBlock;
 
         CPPMRCodeContainer(const string& name, const string& super, int numInputs, int numOutputs, std::ostream* out);
+        CPPMRCodeContainer(const string& name, const string& super, int numInputs, int numOutputs, std::ostream* out, int sub_container_type);
         void generateCompute(int tab);
+        void produceInternal();
+        StatementInst* generateDAGLoopVariant0(const string& counter);
+
+        CodeContainer* createInternalContainer(const string& name, int sub_container_type)
+        {
+            return new CPPMRCodeContainer(name, "", 0, 1, fOut, sub_container_type);
+        }
 
         void processFIR(void)
         {

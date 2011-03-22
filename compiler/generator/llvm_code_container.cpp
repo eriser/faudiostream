@@ -46,7 +46,7 @@ extern bool gSchedulerSwitch;
 extern bool gVectorSwitch;
 extern int gFloatSize;
 
-CodeContainer* LLVMCodeContainer::createScalarContainer(const string& name, int sub_container_type)
+CodeContainer* LLVMCodeContainer::createInternalContainer(const string& name, int sub_container_type)
 {
     return new LLVMScalarCodeContainer(0, 1, fModule, fBuilder, sub_container_type, name);
 }

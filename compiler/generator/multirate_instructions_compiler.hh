@@ -43,6 +43,7 @@ private:
     StatementInst * compileAssignment(Address * vec, Tree sig, FIRIndex const & index);
 
     void compileMultiSignal(Tree rootSignal);
+    void compileSingleSignal(Tree rootSignal);
     ValueInst * compileSample(Tree sig, FIRIndex const & index);
 
     // signal-specific
@@ -69,6 +70,8 @@ private:
     ValueInst * compileSampleRDTable(Tree sig, FIRIndex const & index, Tree table, Tree tableIndex);
     ValueInst * compileSampleWRTable(Tree sig, FIRIndex const & index, Tree table, Tree writeIndex, Tree writeStream);
     NamedAddress * generateTable(Tree table, Tree tableID, Tree tableSize, Tree tableInitializationSignal, bool canBeShared);
+    CodeContainer* signal2Container(const string& name, Tree sig);
+
 
     StatementInst * compileAssignmentVectorize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     StatementInst * compileAssignmentSerialize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1);

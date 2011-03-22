@@ -74,6 +74,52 @@ void MultirateInstructionsCompiler::compileMultiSignal(Tree L)
     fContainer->processFIR();
 }
 
+void MultirateInstructionsCompiler::compileSingleSignal(Tree L)
+{
+    Tree sig = prepare(L);     // Optimize, share and annotate expression
+
+    Typed::VarType containerVarType = (fContainer->getSubContainerType() == kInt) ? Typed::kInt
+                                                                                  : itfloat();
+
+    Typed* type = declareArrayTyped(InstBuilder::genBasicTyped(containerVarType), 0);
+
+    string name1 = subst("fOutput$0_ptr", T(0));
+    string name2 = subst("fOutput$0", T(0));
+    pushDeclare(InstBuilder::genDecStructVar(name1, type));
+    pushComputeBlockMethod(InstBuilder::genStoreStructVar(name1,
+        InstBuilder::genLoadFunArgsVar("output")));
+    pushDeclare(InstBuilder::genDecStructVar(name2, type));
+
+
+    fVectorSize = InstBuilder::genIntNumInst(gVecSize);
+
+    int rate = getSigRate(sig);
+    fContainer->setOutputRate(0, rate);
+
+    string outputName(name2);
+    NamedAddress * outI = InstBuilder::genNamedAddress(outputName, Address::kStruct, InstBuilder::genArrayTyped(InstBuilder::genBasicTyped(Typed::kFloat), 0));
+
+    compileVector(outI, sig);
+
+    generateUserInterfaceTree(prepareUserInterfaceTree(fUIRoot));
+    generateMacroInterfaceTree("", prepareUserInterfaceTree(fUIRoot));
+    if (fDescription)
+        fDescription->ui(prepareUserInterfaceTree(fUIRoot));
+
+    fContainer->processFIR();
+}
+
+CodeContainer* MultirateInstructionsCompiler::signal2Container(const string& name, Tree sig)
+{
+    Type t = getSigType(sig);
+
+    CodeContainer* container = fContainer->createInternalContainer(name, t->nature());
+    MultirateInstructionsCompiler C(container);
+    C.compileSingleSignal(sig);
+    return container;
+}
+
+
 DeclareVarInst * declareIntVarOnStack(string const & name, ValueInst * val)
 {
     return InstBuilder::genDeclareVarInst(InstBuilder::genNamedAddress(name,
@@ -1008,6 +1054,10 @@ ValueInst * MultirateInstructionsCompiler::compileSampleWRTable(Tree sig, FIRInd
 NamedAddress * MultirateInstructionsCompiler::generateTable(Tree table, Tree tableID, Tree tableSize,
                                                             Tree tableInitializationSignal, bool canBeShared)
 {
+    // TODO: tables can be shared under two conditions:
+    //       - they are never written
+    //       - the content does not depend on the sampling rate argument
+
     ValueInst * alreadyCompiledExpression;
     if (getCompiledExpression(table, alreadyCompiledExpression)) {
         LoadVarInst * bufferHandle = dynamic_cast<LoadVarInst*>(alreadyCompiledExpression);
@@ -1028,12 +1078,45 @@ NamedAddress * MultirateInstructionsCompiler::generateTable(Tree table, Tree tab
     ensure(isSigGen(tableInitializationSignal, tableContent));
 
     Typed * tableTyped = declareArrayTyped(signalTyped, iTableSize);
-    DeclareVarInst * declareTable = InstBuilder::genDecStructVar(getFreshID("table_"), tableTyped);
+    string tableName = getFreshID("table_");
+    DeclareVarInst * declareTable = InstBuilder::genDecStructVar(tableName, tableTyped);
     pushDeclare(declareTable);
     setCompiledExpression(table, declareTable->load());
 
-    // FIXME: initialize table
-    // FIXME: declare shared tables as static
+    string className = tableName + "Generator";
+    CodeContainer * subContainer = signal2Container(className, tableContent);
+    fContainer->addSubContainer(subContainer);
+
+    // allocate, use and delete object
+    string sigName = tableName + "Sig";
+
+    // allocate
+    const list<ValueInst*> allocationArgs;
+    DeclareVarInst * declareInitializationObject = InstBuilder::genDecStackVar(sigName,
+                                                                               InstBuilder::genNamedTyped(className,
+                                                                                                          InstBuilder::genBasicTyped(Typed::kObj_ptr)),
+                                                                               InstBuilder::genFunCallInst("new" + className,
+                                                                                                           allocationArgs));
+    pushInitMethod(declareInitializationObject);
+
+    // initialize
+    list<ValueInst*> initializationArgs;
+    initializationArgs.push_back(declareInitializationObject->load());
+    initializationArgs.push_back(InstBuilder::genLoadFunArgsVar("samplingFreq"));
+    pushInitMethod(InstBuilder::genDropInst(InstBuilder::genFunCallInst("instanceInit" + className, initializationArgs)));
+
+    // fill
+    list<ValueInst*> fillArgs;
+    fillArgs.push_back(declareInitializationObject->load());
+    fillArgs.push_back(InstBuilder::genIntNumInst(iTableSize));
+    fillArgs.push_back(declareTable->load());
+    pushInitMethod(InstBuilder::genDropInst(InstBuilder::genFunCallInst("fill" + className, fillArgs)));
+
+    // destroy
+    list<ValueInst*> destructionArgs;
+    destructionArgs.push_back(InstBuilder::genLoadStackVar(sigName));
+    pushPostInitMethod(InstBuilder::genDropInst(InstBuilder::genFunCallInst("delete" + className, destructionArgs)));
+
     NamedAddress * returnAddress = dynamic_cast<NamedAddress*>(declareTable->fAddress);
     return returnAddress;
 }

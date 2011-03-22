@@ -163,9 +163,17 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
             if (basicTyped)
                 declareBasicType(basicTyped); // ensure that it has a type name
 
-            assert(gTypeNames.find(inst->fTyped) != gTypeNames.end());
+            string typeName;
 
-            string const & typeName = gTypeNames[inst->fTyped];
+            if (inst->fTyped->getVarType() == Typed::kObj_ptr) {
+                // we use object pointers for subcontainers, which are not declared via the DeclareType mechanism
+                NamedTyped * namedTyped = dynamic_cast<NamedTyped*>(inst->fTyped);
+                typeName = namedTyped->fName;
+                typeName += " *";
+            } else {
+                assert(gTypeNames.find(inst->fTyped) != gTypeNames.end());
+                typeName = gTypeNames[inst->fTyped];
+            }
 
             if (inst->fAddress->getAccess() & Address::kGlobal) {
                 if (gGlobalTable.find(inst->fAddress->getName()) == gGlobalTable.end()) {

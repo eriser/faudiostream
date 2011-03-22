@@ -166,7 +166,7 @@ class LLVMCodeContainer : public virtual CodeContainer {
         virtual void generateCompute() = 0;
         void produceInternal();
 
-        CodeContainer* createScalarContainer(const string& name, int sub_container_type);
+        CodeContainer* createInternalContainer(const string& name, int sub_container_type);
 
         static CodeContainer* createContainer(int numInputs, int numOutputs, ostream* dst);
 

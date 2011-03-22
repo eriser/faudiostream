@@ -66,7 +66,7 @@ CodeContainer* InstructionsCompiler::signal2Container(const string& name, Tree s
 {
 	Type t = getSigType(sig);
 
-	CodeContainer* container = fContainer->createScalarContainer(name, t->nature());
+	CodeContainer* container = fContainer->createInternalContainer(name, t->nature());
     InstructionsCompiler C(container);
     C.compileSingleSignal(sig);
     return container;
