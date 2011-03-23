@@ -185,8 +185,7 @@ static bool isPrimitive(Tree sig)
         || isSigNumEntry(sig, label,c,x,y,z)
 
         || isSigVBargraph(sig, label,x,y,z)
-        || isSigHBargraph(sig, label,x,y,z)
-        || isSigAttach(sig, x, y) )
+        || isSigHBargraph(sig, label,x,y,z))
         return true;
     else
         return false;
@@ -235,6 +234,11 @@ StatementInst * MultirateInstructionsCompiler::compileAssignment(Address * dest,
     if (isSigWRTbl(sig, tableID, table, tableIndex, tableWriteSignal))
         return store(dest, compileSampleWRTable(sig, index, table, tableID, tableWriteSignal));
 
+    if (isSigAttach(sig, arg1, arg2)) {
+        compileSample(arg2, index);
+        return compileAssignment(dest, arg1, index);
+    }
+
     throw std::runtime_error("not implemented");
     return NULL;
 }
@@ -282,6 +286,11 @@ ValueInst * MultirateInstructionsCompiler::compileSample(Tree sig, FIRIndex cons
     Tree tableID, tableWriteSignal;
     if (isSigWRTbl(sig, tableID, table, tableIndex, tableWriteSignal))
         return compileSampleWRTable(sig, index, table, tableID, tableWriteSignal);
+
+    if (isSigAttach(sig, arg1, arg2)) {
+        compileSample(arg2, index);
+        return compileSample(arg1, index);
+    }
 
     throw std::runtime_error("not implemented");
     return NULL;
