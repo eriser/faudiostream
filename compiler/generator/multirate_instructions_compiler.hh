@@ -66,6 +66,7 @@ private:
 
     ValueInst * compileButton(Tree sig, Tree path, const string & name, FIRIndex const & index);
     ValueInst * compileSlider(Tree sig, Tree path, Tree cur, Tree min, Tree max, Tree step, const string& name, FIRIndex const & index);
+    ValueInst * compileBargraph(Tree sig, Tree path, Tree min, Tree max, Tree value, const string& name, FIRIndex const & index);
 
     ValueInst * compileSampleRDTable(Tree sig, FIRIndex const & index, Tree table, Tree tableIndex);
     ValueInst * compileSampleWRTable(Tree sig, FIRIndex const & index, Tree table, Tree writeIndex, Tree writeStream);

@@ -581,6 +581,32 @@ ValueInst* MultirateInstructionsCompiler::compileSlider(Tree sig, Tree path, Tre
     return InstBuilder::genCastNumInst(InstBuilder::genLoadStructVar(varname), InstBuilder::genBasicTyped(itfloat()));
 }
 
+ValueInst* MultirateInstructionsCompiler::compileBargraph(Tree sig, Tree path, Tree min, Tree max, Tree value,
+                                                          const string& name, FIRIndex const & index)
+{
+    string varname = getFreshID(name);
+    pushDeclare(InstBuilder::genDecStructVar(varname, InstBuilder::genBasicTyped(Typed::kFloatMacro)));
+    addUIWidget(reverse(tl(path)), uiWidget(hd(path), tree(varname), sig));
+
+    ValueInst * exp = compileSample(value, index);
+
+    ::Type t = getSigType(sig);
+    switch (t->variability()) {
+        case kKonst :
+            pushInitMethod(InstBuilder::genStoreStructVar(varname, exp));
+            break;
+        case kBlock :
+            pushComputeBlockMethod(InstBuilder::genStoreStructVar(varname, exp));
+            break;
+
+        case kSamp :
+            pushComputeDSPMethod(InstBuilder::genStoreStructVar(varname, exp));
+            break;
+    }
+
+    return InstBuilder::genCastNumInst(InstBuilder::genLoadStructVar(varname), InstBuilder::genBasicTyped(itfloat()));
+}
+
 
 ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex const & index)
 {
@@ -625,6 +651,11 @@ ValueInst * MultirateInstructionsCompiler::compilePrimitive(Tree sig, FIRIndex c
         return compileSlider(sig, label, c, x, y, z, "fhslider", index);
     if (isSigNumEntry(sig, label, c, x, y, z))
         return compileSlider(sig, label, c, x, y, z, "fentry", index);
+
+    if (isSigVBargraph(sig, label, x, y, z))
+        return compileBargraph(sig, label, x, y, z, "fvbargraph", index);
+    if (isSigHBargraph(sig, label, x, y, z))
+        return compileBargraph(sig, label, x, y, z, "fhbargraph", index);
 
     throw std::runtime_error("not implemented");
 }
