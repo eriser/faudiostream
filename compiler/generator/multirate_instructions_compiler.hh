@@ -86,7 +86,7 @@ private:
 
     // cache handling
     void setCompiledCache(Tree sig, LoadVarInst * loadCacheInst);
-    Address * getCompiledCache(Tree sig); // implicitly adds graph dependency
+    ValueInst * getCompiledCache(Tree sig, FIRIndex const & index); // implicitly adds graph dependency
 
     // helper functions
     StatementInst * store (Address * address, ValueInst * value);

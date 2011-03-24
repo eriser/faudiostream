@@ -2086,6 +2086,10 @@ struct FIRIndex
         data(inst)
     {}
 
+    explicit FIRIndex(int i):
+        data(InstBuilder::genIntNumInst(i))
+    {}
+
     FIRIndex(FIRIndex const & rhs):
         data(rhs.data)
     {}

@@ -312,31 +312,40 @@ ValueInst * MultirateInstructionsCompiler::compileSampleInput(Tree sig, int i, F
 ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRIndex const & index)
 {
     if (isShared(sig)) {
+        const int rate = getSigRate(sig);
+        bool isBlockRate = (rate == 0);
+
+        FIRIndex returnIndex = isBlockRate ? FIRIndex(InstBuilder::genIntNumInst(0))
+                                           : index;
+
         ValueInst * alreadyCompiledExpression;
         if (getCompiledExpression(sig, alreadyCompiledExpression)) {
             LoadVarInst * bufferHandle = dynamic_cast<LoadVarInst*>(alreadyCompiledExpression);
-            IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(bufferHandle->fAddress, index);
+            IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(bufferHandle->fAddress, returnIndex);
             return InstBuilder::genLoadVarInst(addressToReturn);
         }
 
-        int rate = getSigRate(sig);
-
-        if (rate == 0) // FIXME: for now, block-rate signals will be resampled to the basic audio rate.
-            rate = 1;
+        const int subloobSize = isBlockRate ? 1 : rate;
+        const int cacheBufferSize = isBlockRate ? 1 : rate * gVecSize;
 
         Typed * sampleTyped = declareSignalType(sig);
-        ArrayTyped* sampleArrayType = declareArrayTyped(sampleTyped, rate * gVecSize);
+        ArrayTyped* sampleArrayType = declareArrayTyped(sampleTyped, cacheBufferSize);
 
         DeclareVarInst * declareCacheBuffer = InstBuilder::genDecStackVar(getFreshID("cacheVector"), sampleArrayType);
         pushDeclare(declareCacheBuffer);
         setCompiledExpression(sig, declareCacheBuffer->load());
 
-        fContainer->openLoop(getFreshID("i_"), rate);
-        IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), getCurrentLoopIndex());
-        pushComputeDSPMethod(store(storeAddress, compilePrimitive(sig, index)));
+        fContainer->openLoop(getFreshID("i_"), subloobSize);
+        if (isBlockRate) {
+            IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), FIRIndex(0));
+            pushComputePreDSPMethod(store(storeAddress, compilePrimitive(sig, FIRIndex(0))));
+        } else {
+            IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), getCurrentLoopIndex());
+            pushComputeDSPMethod(store(storeAddress, compilePrimitive(sig, getCurrentLoopIndex())));
+        }
         fContainer->closeLoop();
 
-        IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), index);
+        IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), returnIndex);
         return InstBuilder::genLoadVarInst(addressToReturn);
 
     } else {
@@ -350,18 +359,24 @@ void MultirateInstructionsCompiler::setCompiledCache(Tree sig, LoadVarInst * loa
     setLoopProperty(sig, fContainer->getCurLoop());
 }
 
-Address * MultirateInstructionsCompiler::getCompiledCache(Tree sig)
+ValueInst * MultirateInstructionsCompiler::getCompiledCache(Tree sig, FIRIndex const & index)
 {
     ValueInst * compiledExpression;
     if (getCompiledExpression(sig, compiledExpression)) {
         LoadVarInst * bufferHandle = dynamic_cast<LoadVarInst*>(compiledExpression);
-        Address * returnAddress = bufferHandle->fAddress;
+        Address * cacheAddress = bufferHandle->fAddress;
 
         CodeLoop * loop;
         ensure(getLoopProperty(sig, loop));
         fContainer->getCurLoop()->addBackwardDependency(loop);
 
-        return returnAddress;
+        const int rate = getSigRate(sig);
+        bool isBlockRate = (rate == 0);
+
+        FIRIndex returnIndex = isBlockRate ? FIRIndex(InstBuilder::genIntNumInst(0))
+                                           : index;
+
+        return InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(cacheAddress, returnIndex));
     } else
         return NULL;
 }
