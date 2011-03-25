@@ -973,8 +973,22 @@ Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
     delayline->setProperty(declaredDelayLineProperty, tree(Node((void*)returnAddress)));
 
     ForLoopInst * clearMLoop = genSubloop("x", 0, maxDelay);
-    clearMLoop->pushBackInst(InstBuilder::genStoreVarInst(InstBuilder::genIndexedAddress(M->getAddress(), clearMLoop->loadDeclaration()),
-                                                          InstBuilder::genIntNumInst(0)));
+    IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(M->getAddress(), clearMLoop->loadDeclaration());
+
+    vector<int> dimensions = mType->dimensions();
+    dimensions.pop_back();
+    vector<ForLoopInst*> forLoopStack;
+    forLoopStack.push_back(clearMLoop);
+
+    for (size_t i = 0; i != dimensions.size(); ++i) {
+        ForLoopInst * subLoop = genSubloop("k", 0, dimensions[i]);
+        forLoopStack.back()->pushBackInst(subLoop);
+        forLoopStack.push_back(subLoop);
+        storeAddress = InstBuilder::genIndexedAddress(storeAddress, subLoop->loadDeclaration());
+    }
+
+    forLoopStack.back()->pushBackInst(InstBuilder::genStoreVarInst(storeAddress,
+                                                                   InstBuilder::genIntNumInst(0)));
 
     pushInitMethod(clearMLoop);
 
