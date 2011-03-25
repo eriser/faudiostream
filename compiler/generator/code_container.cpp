@@ -141,7 +141,7 @@ void CodeContainer::closeLoop(Tree sig)
     // if it has recursive dependencies, we have to absorb it
     if ( (l->isEmpty() || l->hasRecDependencies()) ) {
 
-        assert(l->fRate == fCurLoop->fRate);
+        assert(l->fSize == fCurLoop->fSize);
         assert(l->fLoopIndex == fCurLoop->fLoopIndex);
 
         fCurLoop->absorb(l);

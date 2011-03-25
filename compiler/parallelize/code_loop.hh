@@ -78,7 +78,7 @@ class CodeLoop {
         bool fIsRecursive;                  ///< recursive loops can't be SIMDed
         const Tree fRecSymbol;              ///< recursive loops define a recursive symbol
         CodeLoop* const fEnclosingLoop;     ///< Loop from which this one originated
-        int fRate;                          ///< rate of the loop
+        int fSize;                          ///< size of the loop
         int fOrder;                         ///< used during topological sort
         int fIndex;
 
@@ -115,13 +115,13 @@ class CodeLoop {
 
         ///< create a recursive loop
         CodeLoop(Tree recsymbol, CodeLoop* encl, string index_name, int rate = 1)
-            :fIsRecursive(true), fRecSymbol(recsymbol), fEnclosingLoop(encl), fRate(rate), fOrder(-1), fIndex(-1),
+            :fIsRecursive(true), fRecSymbol(recsymbol), fEnclosingLoop(encl), fSize(rate), fOrder(-1), fIndex(-1),
             fPreInst(new BlockInst()), fComputeInst(new BlockInst()), fPostInst(new BlockInst()), fLoopIndex(index_name)
         {}
 
         ///< create a non recursive loop
         CodeLoop(CodeLoop* encl, string index_name, int rate = 1)
-            :fIsRecursive(false), fRecSymbol(), fEnclosingLoop(encl), fRate(rate), fOrder(-1), fIndex(-1),
+            :fIsRecursive(false), fRecSymbol(), fEnclosingLoop(encl), fSize(rate), fOrder(-1), fIndex(-1),
             fPreInst(new BlockInst()), fComputeInst(new BlockInst()), fPostInst(new BlockInst()), fLoopIndex(index_name)
         {}
 
@@ -141,9 +141,9 @@ class CodeLoop {
             return InstBuilder::genLoadLoopVar(fLoopIndex);
         }
 
-        int getLoopRate()
+        int getLoopSize()
         {
-            return fRate;
+            return fSize;
         }
 
         ForLoopInst* generateScalarLoop(const string& counter);

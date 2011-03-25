@@ -101,11 +101,6 @@ private:
     ArrayTyped * declareArrayTyped(Typed * typed, int size);
 
     ForLoopInst* genSubloop(string const & loopSymbol, int lowBound, int highBound);
-    int getCurrentRate(void) const
-    {
-        return fContainer->getCurLoop()->getLoopRate();
-    }
-
 
     ValueInst * fVectorSize;
 
