@@ -38,15 +38,17 @@ public:
     {}
 
 private:
+    // compiler entry points
+    void compileMultiSignal(Tree rootSignal);
+    void compileSingleSignal(Tree rootSignal);
+
+    // basic compilation schemes
     void compileTop(Tree rootSignal);
     void compileVector(NamedAddress * vec, Tree sig);
     StatementInst * compileAssignment(Address * vec, Tree sig, FIRIndex const & index);
-
-    void compileMultiSignal(Tree rootSignal);
-    void compileSingleSignal(Tree rootSignal);
     ValueInst * compileSample(Tree sig, FIRIndex const & index);
 
-    // signal-specific
+    // signal-specific compilation
     ValueInst * compileSampleInput(Tree sig, int i, FIRIndex const & index);
     ValueInst * compileSampleVectorize(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     ValueInst * compileSampleSerialize(Tree sig, FIRIndex const & index, Tree arg1);
@@ -73,7 +75,6 @@ private:
     NamedAddress * generateTable(Tree table, Tree tableID, Tree tableSize, Tree tableInitializationSignal, bool canBeShared);
     CodeContainer* signal2Container(const string& name, Tree sig);
 
-
     StatementInst * compileAssignmentVectorize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     StatementInst * compileAssignmentSerialize(Address * vec, Tree sig, FIRIndex const & index, Tree arg1);
     StatementInst * compileAssignmentConcat(Address * vec, Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
@@ -83,27 +84,25 @@ private:
     Address * compileDelayline(Tree delayline);
     Address * declareDelayLine(Tree delayline);
 
-
     // cache handling
     void setCompiledCache(Tree sig, LoadVarInst * loadCacheInst);
     ValueInst * getCompiledCache(Tree sig, FIRIndex const & index); // implicitly adds graph dependency
 
-    // helper functions
+    // FIR helper functions
     StatementInst * store (Address * address, ValueInst * value);
     LoadVarInst * loadCount(void)
     {
         return InstBuilder::genLoadStackVar("count");
     }
-
     Typed * declareSignalType(Tree sig);
     Typed * declareSignalType(AudioType * type);
     Typed * declareSignalType(Typed * type);
     ArrayTyped * declareArrayTyped(Typed * typed, int size);
-
     ForLoopInst* genSubloop(string const & loopSymbol, int lowBound, int highBound);
-
     ValueInst * fVectorSize;
 
+
+    // polymorphic function generators
     template <typename ArgumentContainer,
               class compilePrimitiveFunctor
              >
