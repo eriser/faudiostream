@@ -152,7 +152,7 @@ void MultirateInstructionsCompiler::compileVector(NamedAddress * vec, Tree sig)
 {
     int sigRate = getSigRate(sig);
 
-    fContainer->openLoop(getFreshID("j_"), sigRate);
+    fContainer->openLoop("j", sigRate);
     FIRIndex index(getCurrentLoopIndex());
     IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(vec, index);
     pushComputeDSPMethod(compileAssignment(storeAddress, sig, index));
@@ -335,7 +335,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
         pushDeclare(declareCacheBuffer);
         setCompiledExpression(sig, declareCacheBuffer->load());
 
-        fContainer->openLoop(getFreshID("i_"), subloobSize);
+        fContainer->openLoop("j", subloobSize);
         if (isBlockRate) {
             IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), FIRIndex(0));
             pushComputePreDSPMethod(store(storeAddress, compilePrimitive(sig, FIRIndex(0))));
@@ -716,7 +716,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
     pushDeclare(declareResultBuffer);
     setCompiledExpression(sig, declareResultBuffer->load()); // cache the load handle to the result buffer
 
-    fContainer->openLoop(getFreshID("j_"), sigRate);
+    fContainer->openLoop("j", sigRate);
 
     ForLoopInst * subloop = genSubloop("k", 0, n);
 
@@ -782,7 +782,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
     pushDeclare(declareResultBuffer);
     setCompiledExpression(sig, declareResultBuffer->load()); // cache the load handle to the result buffer
 
-    fContainer->openLoop(getFreshID("j_"), sigRate);
+    fContainer->openLoop("j", sigRate);
 
     ValueInst * condition = InstBuilder::genBinopInst(kEQ,
                                                       InstBuilder::genBinopInst(kRem, getCurrentLoopIndex(), InstBuilder::genIntNumInst(rateFactor)),
@@ -836,7 +836,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRInde
     pushDeclare(declareResultBuffer);
     setCompiledExpression(sig, declareResultBuffer->load()); // cache the load handle to the result buffer
 
-    fContainer->openLoop(getFreshID("j_"), rate);
+    fContainer->openLoop("j", rate);
 
     IndexedAddress * resultAddress1 = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(),
                                                                                                     getCurrentLoopIndex()),

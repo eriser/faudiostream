@@ -133,7 +133,7 @@ private:
         Typed * resultTyped = declareSignalType(sig);
         const size_t argumentCount = argsEnd - argsBegin;
 
-        fContainer->openLoop(getFreshID("j_"), sigRate);
+        fContainer->openLoop("j", sigRate);
 
         vector<ValueInst*> args;
         vector<Typed*> argTypes;

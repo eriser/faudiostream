@@ -137,9 +137,13 @@ void CodeContainer::closeLoop(Tree sig)
     fCurLoop = l->fEnclosingLoop;
     assert(fCurLoop);
 
-    if ( (l->isEmpty() || l->hasRecDependencies())
-        && l->fRate == fCurLoop->fRate
-        && l->fLoopIndex == fCurLoop->fLoopIndex) {
+    // if the current loop is empty, we can absorb it
+    // if it has recursive dependencies, we have to absorb it
+    if ( (l->isEmpty() || l->hasRecDependencies()) ) {
+
+        assert(l->fRate == fCurLoop->fRate);
+        assert(l->fLoopIndex == fCurLoop->fLoopIndex);
+
         fCurLoop->absorb(l);
         delete l;
     } else {
