@@ -26,7 +26,8 @@
 
 /** constant folding and propagation pass
  *
- *  this pass has to be applied on signals with debruijn recursion
+ *  this pass has to be applied on non-typed signals with debruijn recursion
+ *
  *
  *  \param sig: non-recursive signal or subsignal
  */

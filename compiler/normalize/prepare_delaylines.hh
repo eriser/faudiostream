@@ -24,7 +24,7 @@
 
 #include "tree.hh"
 
-/** annotate all delay lines with their required size
+/** annotate all delay lines with their minimum and maximum delay times
  */
 void delaylineAnnotation (Tree root);
 
