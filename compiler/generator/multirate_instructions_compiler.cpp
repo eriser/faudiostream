@@ -321,19 +321,16 @@ ValueInst * MultirateInstructionsCompiler::compileSampleInput(Tree sig, int i, F
 
 ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRIndex const & index)
 {
+    ValueInst * alreadyCompiledExpression = getCompiledCache(sig, index);
+    if (alreadyCompiledExpression)
+        return alreadyCompiledExpression;
+
     if (isShared(sig)) {
         const int rate = getSigRate(sig);
         bool isBlockRate = (rate == 0);
 
         FIRIndex returnIndex = isBlockRate ? FIRIndex(InstBuilder::genIntNumInst(0))
                                            : index;
-
-        ValueInst * alreadyCompiledExpression;
-        if (getCompiledExpression(sig, alreadyCompiledExpression)) {
-            LoadVarInst * bufferHandle = dynamic_cast<LoadVarInst*>(alreadyCompiledExpression);
-            IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(bufferHandle->fAddress, returnIndex);
-            return InstBuilder::genLoadVarInst(addressToReturn);
-        }
 
         const int cacheBufferSize = isBlockRate ? 1 : rate * gVecSize;
 
@@ -342,7 +339,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
 
         DeclareVarInst * declareCacheBuffer = InstBuilder::genDecStackVar(getFreshID("cacheVector"), sampleArrayType);
         pushDeclare(declareCacheBuffer);
-        setCompiledExpression(sig, declareCacheBuffer->load());
+        setCompiledCache(sig, declareCacheBuffer->load());
 
         fContainer->openLoop("j", 1);
         if (isBlockRate) {
