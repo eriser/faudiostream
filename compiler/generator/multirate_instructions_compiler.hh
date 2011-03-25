@@ -128,7 +128,9 @@ private:
         Typed * resultTyped = declareSignalType(sig);
         const size_t argumentCount = argsEnd - argsBegin;
 
-        fContainer->openLoop("j", sigRate);
+        fContainer->openLoop("j", 1);
+        ForLoopInst * rateSubLoop = genSubloop("k", 0, sigRate);
+        pushComputeDSPMethod(rateSubLoop);
 
         vector<ValueInst*> args;
         vector<Typed*> argTypes;
@@ -195,7 +197,7 @@ private:
             }
 
             if (loopTop == 0)
-                pushComputeDSPMethod(loop);
+                rateSubLoop->pushBackInst(loop);
             else
                 loopTop->fCode->pushBackInst(loop);
             loopTop = loop;
