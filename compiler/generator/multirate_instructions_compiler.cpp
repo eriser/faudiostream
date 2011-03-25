@@ -130,6 +130,7 @@ DeclareVarInst * declareIntVarOnStack(string const & name, ValueInst * val)
 
 void MultirateInstructionsCompiler::compileTop(Tree rootSignal)
 {
+    // we are implicitly inside a loop of size gVecSize
     fVectorSize = InstBuilder::genIntNumInst(gVecSize);
 
     int outputCount = len(rootSignal);
@@ -152,10 +153,19 @@ void MultirateInstructionsCompiler::compileVector(NamedAddress * vec, Tree sig)
 {
     int sigRate = getSigRate(sig);
 
-    fContainer->openLoop("j", sigRate);
-    FIRIndex index(getCurrentLoopIndex());
-    IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(vec, index);
-    pushComputeDSPMethod(compileAssignment(storeAddress, sig, index));
+    fContainer->openLoop("j", 1);
+    if (sigRate > 1) {
+        ForLoopInst * subloop = genSubloop("k_", 0, sigRate);
+        FIRIndex index(getCurrentLoopIndex() * sigRate + subloop->loadDeclaration());
+        IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(vec, index);
+        subloop->pushBackInst(compileAssignment(storeAddress, sig, index));
+        pushComputeDSPMethod(subloop);
+    } else {
+        FIRIndex index = getCurrentLoopIndex();
+        IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(vec, index);
+        pushComputeDSPMethod(compileAssignment(storeAddress, sig, index));
+    }
+
     fContainer->closeLoop();
 }
 
@@ -325,7 +335,6 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
             return InstBuilder::genLoadVarInst(addressToReturn);
         }
 
-        const int subloobSize = isBlockRate ? 1 : rate;
         const int cacheBufferSize = isBlockRate ? 1 : rate * gVecSize;
 
         Typed * sampleTyped = declareSignalType(sig);
@@ -335,13 +344,16 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
         pushDeclare(declareCacheBuffer);
         setCompiledExpression(sig, declareCacheBuffer->load());
 
-        fContainer->openLoop("j", subloobSize);
+        fContainer->openLoop("j", 1);
         if (isBlockRate) {
             IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), FIRIndex(0));
             pushComputePreDSPMethod(store(storeAddress, compilePrimitive(sig, FIRIndex(0))));
         } else {
-            IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), getCurrentLoopIndex());
-            pushComputeDSPMethod(store(storeAddress, compilePrimitive(sig, getCurrentLoopIndex())));
+            ForLoopInst * subLoop = genSubloop("k_", 0, rate);
+            FIRIndex storeIndex = getCurrentLoopIndex() * rate + subLoop->loadDeclaration();
+            IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), storeIndex);
+            subLoop->pushBackInst(store(storeAddress, compilePrimitive(sig, storeIndex)));
+            pushComputeDSPMethod(subLoop);
         }
         fContainer->closeLoop();
 
@@ -716,23 +728,27 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
     pushDeclare(declareResultBuffer);
     setCompiledExpression(sig, declareResultBuffer->load()); // cache the load handle to the result buffer
 
-    fContainer->openLoop("j", sigRate);
+    fContainer->openLoop("j", 1);
 
-    ForLoopInst * subloop = genSubloop("k", 0, n);
+    ForLoopInst * outerSubloop = genSubloop("k_", 0, sigRate);
+    FIRIndex ratedIndex = getCurrentLoopIndex() * sigRate + outerSubloop->loadDeclaration();
+
+    ForLoopInst * innerSubloop = genSubloop("l_", 0, n);
 
     NamedAddress * resultBufferAddress = InstBuilder::genNamedAddress(declareResultBuffer->getName(),
                                                                       Address::kStack,
                                                                       resultBufferType);
 
     IndexedAddress * compileAddress = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(resultBufferAddress,
-                                                                                                    getCurrentLoopIndex()),
-                                                                     subloop->loadDeclaration());
+                                                                                                    ratedIndex),
+                                                                     innerSubloop->loadDeclaration());
 
-    FIRIndex compileIndex = getCurrentLoopIndex() * n + subloop->loadDeclaration();
+    FIRIndex compileIndex = ratedIndex * n + innerSubloop->loadDeclaration();
+    innerSubloop->pushBackInst(compileAssignment(compileAddress, arg1, compileIndex));
 
-    subloop->pushBackInst(compileAssignment(compileAddress, arg1, compileIndex));
+    outerSubloop->pushBackInst(innerSubloop);
 
-    pushComputeDSPMethod(subloop);
+    pushComputeDSPMethod(outerSubloop);
     fContainer->closeLoop();
 
     IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(), index);
@@ -774,7 +790,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
 
     int argumentRate = getSigRate(arg1);    // m
     int sigRate = getSigRate(sig);          // n*m
-    int rateFactor = sigRate / argumentRate;
+    int rateFactor = sigRate / argumentRate;// n
 
     ArrayTyped* resultBufferType = declareArrayTyped(sigType, sigRate * gVecSize);
 
@@ -782,28 +798,22 @@ ValueInst * MultirateInstructionsCompiler::compileSampleSerialize(Tree sig, FIRI
     pushDeclare(declareResultBuffer);
     setCompiledExpression(sig, declareResultBuffer->load()); // cache the load handle to the result buffer
 
-    fContainer->openLoop("j", sigRate);
+    fContainer->openLoop("j", 1);
 
-    ValueInst * condition = InstBuilder::genBinopInst(kEQ,
-                                                      InstBuilder::genBinopInst(kRem, getCurrentLoopIndex(), InstBuilder::genIntNumInst(rateFactor)),
-                                                      InstBuilder::genIntNumInst(0));
-
+    ForLoopInst * subLoop = genSubloop("k_", 0, argumentRate);
+    FIRIndex subLoopIndex = getCurrentLoopIndex() * argumentRate + subLoop->loadDeclaration();
 
     NamedAddress * resultBufferAddress = InstBuilder::genNamedAddress(declareResultBuffer->getName(),
                                                                          Address::kStack,
                                                                         resultBufferType);
 
     IndexedAddress * destinationAddress = InstBuilder::genIndexedAddress(resultBufferAddress,
-                                                                         getCurrentLoopIndex());
+                                                                         subLoopIndex * rateFactor);
     CastAddress * castedDestiationAddress = InstBuilder::genCastAddress(destinationAddress, argType);
 
-    FIRIndex compileIndex = getCurrentLoopIndex() / sigRate;
-    BlockInst * thenCase = InstBuilder::genBlockInst();
-    thenCase->pushBackInst(compileAssignment(castedDestiationAddress, arg1, compileIndex));
+    subLoop->pushBackInst(compileAssignment(castedDestiationAddress, arg1, subLoopIndex));
 
-    StatementInst* ifStatement = InstBuilder::genIfInst(condition, thenCase);
-
-    pushComputeDSPMethod(ifStatement);
+    pushComputeDSPMethod(subLoop);
 
     fContainer->closeLoop();
 
@@ -820,7 +830,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRInde
         return InstBuilder::genLoadVarInst(addressToReturn);
     }
 
-    int rate = getSigRate(sig);
+    int sigRate = getSigRate(sig);
     assert(getSigRate(sig) == getSigRate(arg1) && getSigRate(sig) == getSigRate(arg2));
 
     Typed* sigType = declareSignalType(sig);
@@ -830,27 +840,30 @@ ValueInst * MultirateInstructionsCompiler::compileSampleConcat(Tree sig, FIRInde
     assert(isArrayTyped(sigType) && isArrayTyped(argType1) && isArrayTyped(argType2));
     ArrayTyped * vArgType1 = isArrayTyped(argType1);
 
-    ArrayTyped* resultBufferType = declareArrayTyped(sigType, rate * gVecSize);
+    ArrayTyped* resultBufferType = declareArrayTyped(sigType, sigRate * gVecSize);
 
     DeclareVarInst * declareResultBuffer = InstBuilder::genDecStackVar(getFreshID("W"), resultBufferType);
     pushDeclare(declareResultBuffer);
     setCompiledExpression(sig, declareResultBuffer->load()); // cache the load handle to the result buffer
 
-    fContainer->openLoop("j", rate);
+    fContainer->openLoop("j", 1);
+    ForLoopInst * subLoop = genSubloop("k_", 0, sigRate);
+    FIRIndex subLoopIndex = getCurrentLoopIndex() * sigRate + subLoop->loadDeclaration();
 
     IndexedAddress * resultAddress1 = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(),
-                                                                                                    getCurrentLoopIndex()),
+                                                                                                    subLoopIndex),
                                                                      InstBuilder::genIntNumInst(0));
     IndexedAddress * resultAddress2 = InstBuilder::genIndexedAddress(InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(),
-                                                                                                    getCurrentLoopIndex()),
+                                                                                                    subLoopIndex),
                                                                      InstBuilder::genIntNumInst(vArgType1->fSize));
 
     CastAddress * castedResultAddress1 = InstBuilder::genCastAddress(resultAddress1, argType1);
     CastAddress * castedResultAddress2 = InstBuilder::genCastAddress(resultAddress2, argType2);
 
-    pushComputeDSPMethod(compileAssignment(castedResultAddress1, arg1, getCurrentLoopIndex()));
-    pushComputeDSPMethod(compileAssignment(castedResultAddress2, arg2, getCurrentLoopIndex()));
+    subLoop->pushBackInst(compileAssignment(castedResultAddress1, arg1, subLoopIndex));
+    subLoop->pushBackInst(compileAssignment(castedResultAddress2, arg2, subLoopIndex));
 
+    pushComputeDSPMethod(subLoop);
     fContainer->closeLoop();
 
     IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareResultBuffer->getAddress(), index);
@@ -1021,7 +1034,7 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     DeclareVarInst * RM = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareRM));
 
     fContainer->openLoop("delStoreIndex", 1);
-    fContainer->openLoop("j", sigRate);
+    fContainer->openLoop("j", 1);
     fContainer->openLoop("delLoadIndex", 1);
 
     // FIXME: we pack the delayload loop into a subloop in order to avoid the rate to be taken into account
@@ -1036,16 +1049,17 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
 
     delayline->setProperty(delayLineLoadLoopProperty, tree(Node((void*)fContainer->getCurLoop())));
 
-    fContainer->closeLoop();
+    fContainer->closeLoop(); // load delay loop
 
+    ForLoopInst * subLoop = genSubloop("k_", 0, sigRate);
+    FIRIndex subLoopIndex = getCurrentLoopIndex() * sigRate + subLoop->loadDeclaration();
+    Address * address = InstBuilder::genIndexedAddress(RM->fAddress, subLoopIndex + maxDelay);
+    subLoop->pushBackInst(compileAssignment(address, arg, subLoopIndex));
 
-    Address * address = InstBuilder::genIndexedAddress(RM->fAddress, FIRIndex(getCurrentLoopIndex()) + maxDelay);
-    pushComputeDSPMethod(compileAssignment(address, arg, getCurrentLoopIndex()));
-
-    fContainer->closeLoop();
+    pushComputeDSPMethod(subLoop);
+    fContainer->closeLoop(); // actual loop
 
     CodeLoop * delayWriteLoop = fContainer->getCurLoop();
-
 
     ForLoopInst * writeBackLoop = genSubloop("j", 0, maxDelay);
     FIRIndex loadRMIndex = FIRIndex(writeBackLoop->loadDeclaration()) + (sigRate * gVecSize);
@@ -1059,7 +1073,7 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     // FIXME: we pack the writeback loop into a subloop in order to avoid the rate to be taken into account
     pushComputePostDSPMethod(writeBackLoop);
 
-    fContainer->closeLoop();
+    fContainer->closeLoop(); // writeback loop
 
     setLoopProperty(delayline, delayWriteLoop);
     delayline->setProperty(compiledDelayLineProperty, tree(Node((void*)delayLineAddress)));
