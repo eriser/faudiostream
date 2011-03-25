@@ -758,7 +758,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleVectorize(Tree sig, FIRI
 StatementInst * MultirateInstructionsCompiler::compileAssignmentSerialize(Address * vec, Tree sig,
                                                                           FIRIndex const & index, Tree arg1)
 {
-    if (true || !isShared(sig)) {
+    if (!isShared(sig)) {
         int n = getSigRate(sig) / getSigRate(arg1);
         Typed * argType = declareSignalType(arg1);
 
