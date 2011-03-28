@@ -37,6 +37,7 @@
 #include <libgen.h>
 #include <iostream>
 
+#include "gui/FUI.h"
 #include "gui/faustgtk.h"
 #include "gui/OSCUI.h"
 #include "misc.h"
@@ -80,24 +81,26 @@ int main( int argc, char *argv[] )
 	snprintf(dst, 257, "/%s/", name);
 	snprintf(rcfilename, 255, "%s/.%src", home, name);
 
-	UI* interface = new GTKUI (name, &argc, &argv);
+	GUI* interface = new GTKUI (name, &argc, &argv);
+	FUI* finterface = new FUI();
 	DSP.buildUserInterface(interface);
+	DSP.buildUserInterface(finterface);
 
 	oscdsp osca (dst, argc, argv);
 	OSCUI*	oscinterface = new OSCUI(name, argc, argv, &osca);
 	DSP.buildUserInterface(oscinterface);
-	oscinterface->addToggleButton("OSC IO", &oscio);
+//	oscinterface->addToggleButton("OSC IO", &oscio);
 	
 	snprintf(dst, 257, "/%s/", oscinterface->getRootName());
 	osca.setDest (dst);
 	
 	osca.init (name, &DSP);	
-	interface->recallState(rcfilename);
+	finterface->recallState(rcfilename);
 	osca.start ();	
 	
 	oscinterface->run();
 	interface->run();	
-	interface->saveState(rcfilename);
+	finterface->saveState(rcfilename);
 	osca.stop();
 	delete oscinterface;
   	return 0;
