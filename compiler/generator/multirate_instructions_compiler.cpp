@@ -1144,47 +1144,16 @@ StatementInst * MultirateInstructionsCompiler::compileAssignmentProjection(Addre
                                                                            int projectionIndex, Tree recursiveGroup)
 {
     Tree var, listOfExpressions;
+
     ensure(isRec(recursiveGroup, var, listOfExpressions));
     int numberOfExpressions = len(listOfExpressions);
+
     assert(projectionIndex < numberOfExpressions);
 
-    CodeLoop * currentLoop = fContainer->getCurLoop();
-    if (currentLoop->findRecDefinition(recursiveGroup)) {
-        // we are already compiling this expression
-
-        currentLoop->addRecDependency(recursiveGroup);
-
-        // TODO: return reference to cached value
-    }
-
-    vector<Address*> cacheAddresses;
-    for (int i = 0; i != numberOfExpressions; ++i) {
-        Tree expressionToCompute = nth(listOfExpressions, projectionIndex);
-        int rate = getSigRate(expressionToCompute);
-        Typed * cacheType = declareArrayTyped(declareSignalType(expressionToCompute), rate * gVecSize);
-        DeclareVarInst * declareCache = InstBuilder::genDecStructVar(getFreshID("W"), cacheType);
-        pushDeclare(declareCache);
-        cacheAddresses.push_back(declareCache->getAddress());
-    }
-
-    fContainer->openLoop(recursiveGroup, "j", 1);
-
-
-    for (int i = 0; i != numberOfExpressions; ++i) {
-        Tree expressionToCompute = nth(listOfExpressions, projectionIndex);
-        int rate = getSigRate(expressionToCompute);
-        ForLoopInst * subLoop = genSubloop("k", 0, rate);
-        FIRIndex subLoopIndex = getCurrentLoopIndex() * rate + subLoop->loadDeclaration();
-
-        IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(cacheAddresses[i], subLoopIndex);
-
-        subLoop->pushBackInst(compileAssignment(storeAddress, expressionToCompute, subLoopIndex));
-        pushComputeDSPMethod(subLoop);
-    }
-
-    fContainer->closeLoop();
-
-    return store(vec, InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(cacheAddresses[projectionIndex], index)));
+    Tree expressionToCompute = nth(listOfExpressions, projectionIndex);
+    ValueInst * compiledExpression = compileSample(expressionToCompute, index);
+    StatementInst * storeInst = store(vec, compiledExpression);
+    return storeInst;
 }
 
 
