@@ -34,7 +34,7 @@ class MultirateInstructionsCompiler:
 {
 public:
     MultirateInstructionsCompiler(CodeContainer* container):
-        InstructionsCompilerBase(container)
+        InstructionsCompilerBase(container), fOpenRecursiveLoops(0)
     {}
 
 private:
@@ -102,6 +102,30 @@ private:
     ForLoopInst* genSubloop(string const & loopSymbol, int lowBound, int highBound);
     ValueInst * fVectorSize;
 
+    void openLoop(Tree recursiveSymbol, int size = 1)
+    {
+        fContainer->openLoop(recursiveSymbol, "j", size);
+        ++fOpenRecursiveLoops;
+    }
+
+    void openLoop(int size = 1)
+    {
+        fContainer->openLoop("j", size);
+    }
+
+    void closeLoop(void)
+    {
+        if (fContainer->getCurLoop()->isRecursive())
+            --fOpenRecursiveLoops;
+        fContainer->closeLoop();
+    }
+
+    bool inRecursiveLoop(void) const
+    {
+        return fOpenRecursiveLoops != 0;
+    }
+
+    int fOpenRecursiveLoops;
 
     // polymorphic function generators
     template <typename ArgumentContainer,
