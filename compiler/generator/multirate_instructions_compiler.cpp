@@ -64,6 +64,7 @@ void MultirateInstructionsCompiler::compileMultiSignal(Tree L)
         pushDeclare(InstBuilder::genDecStructVar(name2, type));
     }
 
+    compileRecursions(L);
     compileTop(L);
 
     generateUserInterfaceTree(prepareUserInterfaceTree(fUIRoot));
@@ -99,6 +100,7 @@ void MultirateInstructionsCompiler::compileSingleSignal(Tree L)
     string outputName(name2);
     NamedAddress * outI = InstBuilder::genNamedAddress(outputName, Address::kStruct, InstBuilder::genArrayTyped(InstBuilder::genBasicTyped(Typed::kFloat), 0));
 
+    compileRecursions(L);
     compileVector(outI, sig);
 
     generateUserInterfaceTree(prepareUserInterfaceTree(fUIRoot));
@@ -108,6 +110,31 @@ void MultirateInstructionsCompiler::compileSingleSignal(Tree L)
 
     fContainer->processFIR();
 }
+
+void MultirateInstructionsCompiler::compileRecursions(Tree signal)
+{
+    static Tree recursionCompiledProperty = tree("recursionCompiled");
+
+    if (signal->getProperty(recursionCompiledProperty))
+        return;
+
+    signal->setProperty(recursionCompiledProperty, tree(1));
+
+    Tree delayedSignal;
+    if (isSigDelayLine(signal, delayedSignal))
+        declareDelayLine(signal);
+
+    vector<Tree> subSignals;
+    getSubSignals(signal, subSignals);
+
+    for(vector<Tree>::iterator it = subSignals.begin(); it != subSignals.end(); ++it)
+        compileRecursions(*it);
+
+    if (isSigDelayLine(signal, delayedSignal))
+        compileDelayline(signal);
+}
+
+
 
 CodeContainer* MultirateInstructionsCompiler::signal2Container(const string& name, Tree sig)
 {
@@ -1031,7 +1058,13 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     DeclareVarInst * RM = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareRM));
 
     fContainer->openLoop("delStoreIndex", 1);
-    fContainer->openLoop("j", 1);
+    int projectionIndex; Tree recursiveGroup;
+    if (isProj(arg, &projectionIndex, recursiveGroup)) {
+        Tree id, body;
+        ensure(isRec(recursiveGroup, id, body));
+        fContainer->openLoop(id, "j");
+    } else
+        fContainer->openLoop("j", 1);
     fContainer->openLoop("delLoadIndex", 1);
 
     // FIXME: we pack the delayload loop into a subloop in order to avoid the rate to be taken into account

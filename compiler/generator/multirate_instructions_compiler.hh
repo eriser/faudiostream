@@ -41,6 +41,7 @@ private:
     // compiler entry points
     void compileMultiSignal(Tree rootSignal);
     void compileSingleSignal(Tree rootSignal);
+    void compileRecursions(Tree rootSignal);
 
     // basic compilation schemes
     void compileTop(Tree rootSignal);
