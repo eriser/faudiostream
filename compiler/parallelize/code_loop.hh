@@ -164,6 +164,15 @@ class CodeLoop {
 
         static void sortGraph(CodeLoop* root, lclgraph& V);
 
+        CodeLoop * getEnclosingLoop(void) const
+        {
+            return fEnclosingLoop;
+        }
+
+        Tree getRecSymbol(void) const
+        {
+            return fRecSymbol;
+        }
 };
 
 #endif
