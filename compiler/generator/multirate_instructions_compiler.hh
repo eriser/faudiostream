@@ -43,7 +43,7 @@ private:
     void compileSingleSignal(Tree rootSignal);
 
     // basic compilation schemes
-    void compileRecursions(Tree rootSignal);
+    void compileRecursiveGroups(Tree rootSignal);
     void compileTop(Tree rootSignal);
     void compileVector(NamedAddress * vec, Tree sig);
     StatementInst * compileAssignment(Address * vec, Tree sig, FIRIndex const & index);
@@ -89,7 +89,7 @@ private:
     void setCompiledCache(Tree sig, LoadVarInst * loadCacheInst);
     ValueInst * getCompiledCache(Tree sig, FIRIndex const & index); // implicitly adds graph dependency
 
-    // FIR helper functions
+    // FIR helper functions: mainly syntactic sugar for InstBuilder
     StatementInst * store (Address * address, ValueInst * value);
     LoadVarInst * loadCount(void)
     {
@@ -102,6 +102,7 @@ private:
     ForLoopInst* genSubloop(string const & loopSymbol, int lowBound, int highBound);
     ValueInst * fVectorSize;
 
+    // loop handling helper functions
     void openLoop(Tree recursiveSymbol, int size = 1)
     {
         fContainer->openLoop(recursiveSymbol, "j", size);
