@@ -79,17 +79,18 @@ void MultirateInstructionsCompiler::compileSingleSignal(Tree L)
 {
     Tree sig = prepare(L);     // Optimize, share and annotate expression
 
-    Typed::VarType containerVarType = (fContainer->getSubContainerType() == kInt) ? Typed::kInt
-                                                                                  : itfloat();
+    Typed * sigTyped = declareSignalType(L);
+    Typed* type = declareArrayTyped(sigTyped, 0);
 
-    Typed* type = declareArrayTyped(InstBuilder::genBasicTyped(containerVarType), 0);
+    string outputPtrName = subst("fOutput$0_ptr", T(0));
+    string outputName = subst("fOutput$0", T(0));
+    pushDeclare(InstBuilder::genDecStructVar(outputPtrName, type));
 
-    string name1 = subst("fOutput$0_ptr", T(0));
-    string name2 = subst("fOutput$0", T(0));
-    pushDeclare(InstBuilder::genDecStructVar(name1, type));
-    pushComputeBlockMethod(InstBuilder::genStoreStructVar(name1,
-        InstBuilder::genLoadFunArgsVar("output")));
-    pushDeclare(InstBuilder::genDecStructVar(name2, type));
+    // FIXME: we need to cast the Address of "output" to the type of sigType and store it in the pointer
+    //        this most likely requires an extension ot the FIR
+    pushComputeBlockMethod(InstBuilder::genStoreStructVar(outputPtrName,
+                                                          InstBuilder::genLoadFunArgsVar("output")));
+    pushDeclare(InstBuilder::genDecStructVar(outputName, type));
 
 
     fVectorSize = InstBuilder::genIntNumInst(gVecSize);
@@ -97,8 +98,7 @@ void MultirateInstructionsCompiler::compileSingleSignal(Tree L)
     int rate = getSigRate(sig);
     fContainer->setOutputRate(0, rate);
 
-    string outputName(name2);
-    NamedAddress * outI = InstBuilder::genNamedAddress(outputName, Address::kStruct, InstBuilder::genArrayTyped(InstBuilder::genBasicTyped(Typed::kFloat), 0));
+    NamedAddress * outI = InstBuilder::genNamedAddress(outputName, Address::kStruct, type);
 
     compileRecursions(L);
     compileVector(outI, sig);
@@ -125,7 +125,7 @@ void MultirateInstructionsCompiler::compileRecursions(Tree signal)
         declareDelayLine(signal);
 
     vector<Tree> subSignals;
-    getSubSignals(signal, subSignals);
+    getSubSignals(signal, subSignals, false);
 
     for(vector<Tree>::iterator it = subSignals.begin(); it != subSignals.end(); ++it)
         compileRecursions(*it);
@@ -1179,6 +1179,9 @@ ValueInst * MultirateInstructionsCompiler::compileSampleWRTable(Tree sig, FIRInd
 NamedAddress * MultirateInstructionsCompiler::generateTable(Tree table, Tree tableID, Tree tableSize,
                                                             Tree tableInitializationSignal, bool canBeShared)
 {
+    // FIXME: in order to correctly initialize tables, we need to do that before the code generation for recursive groups
+    //        otherwise the local data structures are generated as part of the container, instead of the subcontainer
+
     // TODO: tables can be shared under two conditions:
     //       - they are never written
     //       - the content does not depend on the sampling rate argument
