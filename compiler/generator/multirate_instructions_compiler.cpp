@@ -946,16 +946,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleAt(Tree sig, FIRIndex co
 }
 
 static Tree declaredDelayLineProperty = tree(Node("declaredDelayLineProperty"));
-
-static IndexedAddress * getDelayLineDeclaration(Tree delayline)
-{
-    Tree declaredDelayLine = delayline->getProperty(declaredDelayLineProperty);
-
-    if (declaredDelayLine)
-        return static_cast<IndexedAddress*>(tree2ptr(declaredDelayLine));
-    else
-        return NULL;
-}
+static Tree compiledDelayLineProperty = tree(Node("compiledDelayLineProperty"));
 
 static int getDelaylineRate(Tree delayedSignal)
 {
@@ -1041,13 +1032,12 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     Tree arg;
     ensure (isSigDelayLine(delayline, arg));
 
-    static Tree compiledDelayLineProperty = tree(Node("compiledDelayLineProperty"));
-
     Tree compiledDelayLine = delayline->getProperty(compiledDelayLineProperty);
     if (compiledDelayLine)
         return (Address*)tree2ptr(compiledDelayLine);
 
     Address * delayLineAddress = declareDelayLine(delayline);
+    delayline->setProperty(compiledDelayLineProperty, tree(Node((void*)delayLineAddress)));
     static Tree declareM = tree(Node("declareM"));
     static Tree declareRM = tree(Node("declareRM"));
 
@@ -1108,18 +1098,16 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     closeLoop(); // writeback loop
 
     setLoopProperty(delayline, delayWriteLoop);
-    delayline->setProperty(compiledDelayLineProperty, tree(Node((void*)delayLineAddress)));
 
     return delayLineAddress;
 }
 
 ValueInst * MultirateInstructionsCompiler::compileSampleDelay(Tree sig, FIRIndex const & index, Tree delayline, Tree delay)
 {
-    IndexedAddress * delayAddress = getDelayLineDeclaration(delayline);
+    assert(delayline->getProperty(declaredDelayLineProperty));
 
-    if (delayAddress == NULL)
-        // we need to compile the delayline
-        delayAddress = dynamic_cast<IndexedAddress*>(compileDelayline(delayline));
+    Address * delayLineAddress = compileDelayline(delayline);
+    IndexedAddress * delayAddress = static_cast<IndexedAddress*>(delayLineAddress);
 
     ValueInst * compiledDelayLength = compileSample(delay, index);
 
