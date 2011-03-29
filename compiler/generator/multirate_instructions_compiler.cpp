@@ -86,8 +86,6 @@ void MultirateInstructionsCompiler::compileSingleSignal(Tree L)
     string outputName = subst("fOutput$0", T(0));
     pushDeclare(InstBuilder::genDecStructVar(outputPtrName, type));
 
-    // FIXME: we need to cast the Address of "output" to the type of sigType and store it in the pointer
-    //        this most likely requires an extension ot the FIR
     pushComputeBlockMethod(InstBuilder::genStoreStructVar(outputPtrName,
                                                           InstBuilder::genLoadFunArgsVar("output")));
     pushDeclare(InstBuilder::genDecStructVar(outputName, type));
@@ -142,8 +140,10 @@ void MultirateInstructionsCompiler::compileRecursions(Tree signal)
 CodeContainer* MultirateInstructionsCompiler::signal2Container(const string& name, Tree sig)
 {
     Type t = getSigType(sig);
+    Typed * typed = declareSignalType(sig);
 
     CodeContainer* container = fContainer->createInternalContainer(name, t->nature());
+    container->fSubContainerTyped = typed;
     MultirateInstructionsCompiler C(container);
     C.compileSingleSignal(sig);
     return container;

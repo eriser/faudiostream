@@ -308,6 +308,7 @@ class CodeContainer {
             return fSubContainerType;
         }
 
+        Typed * fSubContainerTyped; // HACK: specify real type of multidimensional subcontainer
 
         // UI construction
         void addUIMacro(const string& str)  { fUIMacro.push_back(str); }

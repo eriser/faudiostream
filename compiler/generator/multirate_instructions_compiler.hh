@@ -41,9 +41,9 @@ private:
     // compiler entry points
     void compileMultiSignal(Tree rootSignal);
     void compileSingleSignal(Tree rootSignal);
-    void compileRecursions(Tree rootSignal);
 
     // basic compilation schemes
+    void compileRecursions(Tree rootSignal);
     void compileTop(Tree rootSignal);
     void compileVector(NamedAddress * vec, Tree sig);
     StatementInst * compileAssignment(Address * vec, Tree sig, FIRIndex const & index);
