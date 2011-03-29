@@ -631,10 +631,14 @@ void CPPMRCodeContainer::produceInternal()
         string counter = "fullCount";
         tab(n+1, *fOut);
         string fillArguments;
-        if (fSubContainerType == kInt)
-            fillArguments = subst("int $0, int* output", counter);
-        else
-            fillArguments = subst("int $0, $1* output", counter, ifloat());
+        if (fSubContainerTyped) {
+            fillArguments = subst("int $0, $1* output", counter, fCodeProducer.getTypeString(fSubContainerTyped));
+        } else {
+            if (fSubContainerType == kInt)
+                fillArguments = subst("int $0, int* output", counter);
+            else
+                fillArguments = subst("int $0, $1* output", counter, ifloat());
+        }
 
         tab(n+1, *fOut); *fOut << "void fill (" << fillArguments << ") {";
 

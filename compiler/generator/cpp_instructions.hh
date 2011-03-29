@@ -588,6 +588,12 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
         }
 
         map<Typed*, string> gTypeNames;
+        string getTypeString(Typed * typed) const
+        {
+            assert(gTypeNames.find(typed) != gTypeNames.end());
+            return gTypeNames.find(typed)->second;
+        }
+
         virtual void visit(DeclareTypeInst* inst)
         {
             static int index = 0;

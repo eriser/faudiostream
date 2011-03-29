@@ -142,8 +142,10 @@ void MultirateInstructionsCompiler::compileRecursions(Tree signal)
 CodeContainer* MultirateInstructionsCompiler::signal2Container(const string& name, Tree sig)
 {
     Type t = getSigType(sig);
+    Typed * typed = declareSignalType(sig);
 
     CodeContainer* container = fContainer->createInternalContainer(name, t->nature());
+    container->fSubContainerTyped = typed;
     MultirateInstructionsCompiler C(container);
     C.compileSingleSignal(sig);
     return container;
