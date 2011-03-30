@@ -954,28 +954,6 @@ ValueInst * MultirateInstructionsCompiler::compileSampleAt(Tree sig, FIRIndex co
 static Tree declaredDelayLineProperty = tree(Node("declaredDelayLineProperty"));
 static Tree compiledDelayLineProperty = tree(Node("compiledDelayLineProperty"));
 
-static int getDelaylineRate(Tree delayedSignal)
-{
-    //FIXME: maybe we can simply annotate the delayline with a rate?
-    int sigRate = getSigRate(delayedSignal);
-    if (sigRate)
-        return sigRate;
-
-    Tree recursiveGroup;
-    int i;
-    if (isProj(delayedSignal, &i, recursiveGroup)) {
-        Tree id, body;
-        ensure(isRec(recursiveGroup, id, body));
-        return getDelaylineRate(nth(body, i));
-    }
-
-    // block-rate signals have a rate of one
-    AudioType * delayedSignalType = getSigType(delayedSignal);
-    // FIXME: why does this assertion rule fire? in theory it shouldn't
-    assert(delayedSignalType->variability() < kSamp);
-    return 1;
-}
-
 Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
 {
     Tree arg;
@@ -986,7 +964,7 @@ Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
         return (Address*)tree2ptr(declaredDelayLine);
 
     // if small
-    int sigRate = getDelaylineRate(arg);
+    int sigRate = getSigRate(arg);
     assert(sigRate);
     Typed * sigType = declareSignalType(arg);
     int maxDelay = getMaxDelay(delayline);
@@ -1034,19 +1012,31 @@ Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
 
 Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
 {
-    Tree arg;
-    ensure (isSigDelayLine(delayline, arg));
+    Tree delayedSignal;
+    ensure (isSigDelayLine(delayline, delayedSignal));
 
     Tree compiledDelayLine = delayline->getProperty(compiledDelayLineProperty);
-    if (compiledDelayLine)
+    if (compiledDelayLine) {
+        int projectionIndex; Tree recursiveGroup;
+        CodeLoop * currentLoop = fContainer->getCurLoop();
+        CodeLoop * delaylineLoop;
+        if (isProj(delayedSignal, &projectionIndex, recursiveGroup) &&
+            currentLoop->findRecDefinition(recursiveGroup)) {
+            currentLoop->addRecDependency(recursiveGroup);
+        } else if (fContainer->getLoopProperty(compiledDelayLine, delaylineLoop)) {
+            currentLoop->addBackwardDependency(delaylineLoop);
+        }
+
         return (Address*)tree2ptr(compiledDelayLine);
+    }
 
     Address * delayLineAddress = declareDelayLine(delayline);
     delayline->setProperty(compiledDelayLineProperty, tree(Node((void*)delayLineAddress)));
     static Tree declareM = tree(Node("declareM"));
     static Tree declareRM = tree(Node("declareRM"));
 
-    int sigRate = getDelaylineRate(arg);
+    int sigRate = getSigRate(delayedSignal);
+    assert(sigRate);
     int maxDelay = getMaxDelay(delayline);
     maxDelay = max(1, maxDelay); // FIXME: we ensure a delay of one sample, later we need to distinguish between delays of
                                  // projections and `normal' delays
@@ -1057,7 +1047,7 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     if (!inRecursiveLoop())
         openLoop(); // store to struct
     int projectionIndex; Tree recursiveGroup;
-    if (isProj(arg, &projectionIndex, recursiveGroup)) {
+    if (isProj(delayedSignal, &projectionIndex, recursiveGroup)) {
         // projections need to be compiled into a recursive loop
         Tree id, body;
         ensure(isRec(recursiveGroup, id, body));
@@ -1081,7 +1071,7 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     ForLoopInst * subLoop = genSubloop("k_", 0, sigRate);
     FIRIndex subLoopIndex = getCurrentLoopIndex() * sigRate + subLoop->loadDeclaration();
     Address * address = InstBuilder::genIndexedAddress(RM->fAddress, subLoopIndex + maxDelay);
-    subLoop->pushBackInst(compileAssignment(address, arg, subLoopIndex));
+    subLoop->pushBackInst(compileAssignment(address, delayedSignal, subLoopIndex));
 
     pushComputeDSPMethod(subLoop);
 
