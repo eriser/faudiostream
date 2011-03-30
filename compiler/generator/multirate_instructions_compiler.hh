@@ -41,9 +41,9 @@ private:
     // compiler entry points
     void compileMultiSignal(Tree rootSignal);
     void compileSingleSignal(Tree rootSignal);
-    void compileRecursions(Tree rootSignal);
 
     // basic compilation schemes
+    void compileRecursiveGroups(Tree rootSignal);
     void compileTop(Tree rootSignal);
     void compileVector(NamedAddress * vec, Tree sig);
     StatementInst * compileAssignment(Address * vec, Tree sig, FIRIndex const & index);
@@ -89,7 +89,7 @@ private:
     void setCompiledCache(Tree sig, LoadVarInst * loadCacheInst);
     ValueInst * getCompiledCache(Tree sig, FIRIndex const & index); // implicitly adds graph dependency
 
-    // FIR helper functions
+    // FIR helper functions: mainly syntactic sugar for InstBuilder
     StatementInst * store (Address * address, ValueInst * value);
     LoadVarInst * loadCount(void)
     {
@@ -102,6 +102,7 @@ private:
     ForLoopInst* genSubloop(string const & loopSymbol, int lowBound, int highBound);
     ValueInst * fVectorSize;
 
+    // loop handling helper functions
     void openLoop(Tree recursiveSymbol, int size = 1)
     {
         fContainer->openLoop(recursiveSymbol, "j", size);
@@ -170,7 +171,7 @@ private:
         Typed * resultTyped = declareSignalType(sig);
         const size_t argumentCount = argsEnd - argsBegin;
 
-        fContainer->openLoop("j", 1);
+        openLoop();
         ForLoopInst * rateSubLoop = genSubloop("k", 0, sigRate);
         pushComputeDSPMethod(rateSubLoop);
 
@@ -178,7 +179,7 @@ private:
         vector<Typed*> argTypes;
         vector<int> argDimensions;
         for (ArgumentIterator it = argsBegin; it != argsEnd; ++it) {
-            args.push_back(compileSample(*it, index));
+            args.push_back(compileSample(*it, getCurrentLoopIndex()));
             Typed * argType = declareSignalType(*it);
             argTypes.push_back(argType);
             argDimensions.push_back(argType->dimension());
@@ -262,7 +263,7 @@ private:
                                                                 storeIndex.begin(), storeIndex.end());
         loopTop->pushBackInst(store);
 
-        fContainer->closeLoop();
+        closeLoop();
 
         ValueInst * result = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(resultBuffer->fAddress,
                                                                                         index));

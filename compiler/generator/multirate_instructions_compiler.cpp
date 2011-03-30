@@ -64,7 +64,7 @@ void MultirateInstructionsCompiler::compileMultiSignal(Tree L)
         pushDeclare(InstBuilder::genDecStructVar(name2, type));
     }
 
-    compileRecursions(L);
+    compileRecursiveGroups(L);
     compileTop(L);
 
     generateUserInterfaceTree(prepareUserInterfaceTree(fUIRoot));
@@ -86,8 +86,6 @@ void MultirateInstructionsCompiler::compileSingleSignal(Tree L)
     string outputName = subst("fOutput$0", T(0));
     pushDeclare(InstBuilder::genDecStructVar(outputPtrName, type));
 
-    // FIXME: we need to cast the Address of "output" to the type of sigType and store it in the pointer
-    //        this most likely requires an extension ot the FIR
     pushComputeBlockMethod(InstBuilder::genStoreStructVar(outputPtrName,
                                                           InstBuilder::genLoadFunArgsVar("output")));
     pushDeclare(InstBuilder::genDecStructVar(outputName, type));
@@ -100,7 +98,7 @@ void MultirateInstructionsCompiler::compileSingleSignal(Tree L)
 
     NamedAddress * outI = InstBuilder::genNamedAddress(outputName, Address::kStruct, type);
 
-    compileRecursions(L);
+    compileRecursiveGroups(L);
     compileVector(outI, sig);
 
     generateUserInterfaceTree(prepareUserInterfaceTree(fUIRoot));
@@ -111,25 +109,28 @@ void MultirateInstructionsCompiler::compileSingleSignal(Tree L)
     fContainer->processFIR();
 }
 
-void MultirateInstructionsCompiler::compileRecursions(Tree signal)
+/* compile recursive groups recursively visiting projections and delaylines from the leaves to the root
+ */
+void MultirateInstructionsCompiler::compileRecursiveGroups(Tree signal)
 {
+    // we use a property to avoid cyclic recursions
     static Tree recursionCompiledProperty = tree("recursionCompiled");
-
     if (signal->getProperty(recursionCompiledProperty))
         return;
-
     signal->setProperty(recursionCompiledProperty, tree(1));
 
+    // before traversing the signal tree, we declare all delay lines
     Tree delayedSignal;
     if (isSigDelayLine(signal, delayedSignal))
         declareDelayLine(signal);
 
+    // recursively visit all subsignals
     vector<Tree> subSignals;
     getSubSignals(signal, subSignals, false);
-
     for(vector<Tree>::iterator it = subSignals.begin(); it != subSignals.end(); ++it)
-        compileRecursions(*it);
+        compileRecursiveGroups(*it);
 
+    // compile the delay lines which are proceeded by a recursion
     if (isSigDelayLine(signal, delayedSignal)) {
         int projectionIndex; Tree recursiveGroup;
         if (isProj(delayedSignal, &projectionIndex, recursiveGroup))
@@ -970,6 +971,7 @@ static int getDelaylineRate(Tree delayedSignal)
 
     // block-rate signals have a rate of one
     AudioType * delayedSignalType = getSigType(delayedSignal);
+    // FIXME: why does this assertion rule fire? in theory it shouldn't
     assert(delayedSignalType->variability() < kSamp);
     return 1;
 }
@@ -1121,6 +1123,7 @@ ValueInst * MultirateInstructionsCompiler::compileSampleDelay(Tree sig, FIRIndex
                                                                                          indexInDelayline + delayAddress->fIndex));
 
     // FIXME: we need to ensure that the delayline has been written before we read it
+    //        we could simply add a dependency to the dag of loops, but that doesn't work within recursions
 
     return loadDelay;
 }
@@ -1181,9 +1184,6 @@ ValueInst * MultirateInstructionsCompiler::compileSampleWRTable(Tree sig, FIRInd
 NamedAddress * MultirateInstructionsCompiler::generateTable(Tree table, Tree tableID, Tree tableSize,
                                                             Tree tableInitializationSignal, bool canBeShared)
 {
-    // FIXME: in order to correctly initialize tables, we need to do that before the code generation for recursive groups
-    //        otherwise the local data structures are generated as part of the container, instead of the subcontainer
-
     // TODO: tables can be shared under two conditions:
     //       - they are never written
     //       - the content does not depend on the sampling rate argument
