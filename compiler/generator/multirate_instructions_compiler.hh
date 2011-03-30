@@ -171,7 +171,7 @@ private:
         Typed * resultTyped = declareSignalType(sig);
         const size_t argumentCount = argsEnd - argsBegin;
 
-        fContainer->openLoop("j", 1);
+        openLoop();
         ForLoopInst * rateSubLoop = genSubloop("k", 0, sigRate);
         pushComputeDSPMethod(rateSubLoop);
 
@@ -179,7 +179,7 @@ private:
         vector<Typed*> argTypes;
         vector<int> argDimensions;
         for (ArgumentIterator it = argsBegin; it != argsEnd; ++it) {
-            args.push_back(compileSample(*it, index));
+            args.push_back(compileSample(*it, getCurrentLoopIndex()));
             Typed * argType = declareSignalType(*it);
             argTypes.push_back(argType);
             argDimensions.push_back(argType->dimension());
@@ -263,7 +263,7 @@ private:
                                                                 storeIndex.begin(), storeIndex.end());
         loopTop->pushBackInst(store);
 
-        fContainer->closeLoop();
+        closeLoop();
 
         ValueInst * result = InstBuilder::genLoadVarInst(InstBuilder::genIndexedAddress(resultBuffer->fAddress,
                                                                                         index));
