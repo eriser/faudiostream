@@ -374,8 +374,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
         pushDeclare(declareCacheBuffer);
         setCompiledCache(sig, declareCacheBuffer->load());
 
-        if (!inRecursiveLoop())
-            openLoop();
+        openLoop();
         if (isBlockRate) {
             IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), FIRIndex(0));
             pushComputePreDSPMethod(store(storeAddress, compilePrimitive(sig, FIRIndex(0))));
@@ -386,8 +385,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
             subLoop->pushBackInst(store(storeAddress, compilePrimitive(sig, storeIndex)));
             pushComputeDSPMethod(subLoop);
         }
-        if (!inRecursiveLoop())
-            closeLoop();
+        closeLoop();
 
         IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), returnIndex);
         return InstBuilder::genLoadVarInst(addressToReturn);
@@ -410,6 +408,8 @@ ValueInst * MultirateInstructionsCompiler::getCompiledCache(Tree sig, FIRIndex c
         LoadVarInst * bufferHandle = dynamic_cast<LoadVarInst*>(compiledExpression);
         Address * cacheAddress = bufferHandle->fAddress;
 
+        // FIXME: when we are inside a recursion, loop may have been absorbed, so we may add a dependency to nowhere
+        //        we should probably track the loop properties differently or rewrite the loop properties.
         CodeLoop * loop;
         ensure(getLoopProperty(sig, loop));
         fContainer->getCurLoop()->addBackwardDependency(loop);
@@ -1044,7 +1044,6 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     DeclareVarInst * M  = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareM));
     DeclareVarInst * RM = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareRM));
 
-    if (!inRecursiveLoop())
         openLoop(); // store to struct
     int projectionIndex; Tree recursiveGroup;
     if (isProj(delayedSignal, &projectionIndex, recursiveGroup)) {
@@ -1076,8 +1075,7 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     pushComputeDSPMethod(subLoop);
 
     CodeLoop * delayLoop = fContainer->getCurLoop();
-    if (!inRecursiveLoop())
-        setLoopProperty(delayline, delayLoop);
+    setLoopProperty(delayline, delayLoop);
 
     closeLoop(); // actual loop
 
@@ -1093,8 +1091,7 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     // FIXME: we pack the writeback loop into a subloop in order to avoid the rate to be taken into account
     pushComputePostDSPMethod(writeBackLoop);
 
-    if (!inRecursiveLoop())
-        closeLoop(); // writeback loop
+    closeLoop(); // writeback loop
 
     return delayLineAddress;
 }
