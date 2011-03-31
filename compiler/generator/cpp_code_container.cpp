@@ -589,6 +589,10 @@ StatementInst* CPPMRCodeContainer::generateDAGLoopVariant0(const string& counter
     return block_res;
 }
 
+/* produce internal class.
+ * FIXME: this can probably be merged with CPPCodeContainer::produceInternal, since it is a generalization for arbitrary signal
+ *        types which is backwards compatible
+ */
 void CPPMRCodeContainer::produceInternal()
 {
     int n = 0;

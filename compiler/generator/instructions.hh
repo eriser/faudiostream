@@ -311,6 +311,9 @@ struct NullInst : public ValueInst
 
 struct Typed : public Printable
 {
+    /* FIXME: the _vec and _ptr symbols are not used and are probably obsolete
+     *        pointers can be encoded as ArrayTyped of size 0
+     */
     enum VarType {kFloatMacro, kFloatMacro_ptr, kFloat, kFloat_ptr, kFloat_vec, kFloat_vec_ptr,
                 kInt, kInt_ptr, kInt_vec, kInt_vec_ptr,
                 kDouble, kDouble_ptr, kDouble_vec, kDouble_vec_ptr,
@@ -321,8 +324,13 @@ struct Typed : public Printable
     Typed()
     {}
 
+    /* get the VarType of the type */
     virtual VarType getVarType() const = 0;
+    /* get the VarType of the type
+     * NOTE: this is obsolete since it modifies the _vec/_ptr trait of the VarType
+     */
     virtual VarType getType() const = 0;
+    /* get the number of dimensions of the type */
     virtual int dimension() const = 0;
 
     // Returns the pointer type version of a primitive type
@@ -439,6 +447,7 @@ struct Typed : public Printable
 
     virtual Typed* clone(CloneVisitor* cloner) = 0;
 
+    /* get the dimensions of the type */
     virtual std::vector<int> dimensions() const = 0;
 };
 
@@ -519,6 +528,7 @@ struct ArrayTyped : public Typed {
     Typed* fType;
     int fSize;
 
+    /* an ArrayTyped of size 0 is interpreted as pointer type */
     ArrayTyped(Typed* type, int size)
         :fType(type), fSize(size)
     {}
@@ -591,10 +601,12 @@ struct Address : public Printable {
     }
 
     virtual Address* clone(CloneVisitor* cloner) = 0;
-
     virtual void accept(InstVisitor* visitor) = 0;
 
+    /* get the dimensions of the type of this address */
     virtual std::vector<int> dimensions() const = 0;
+
+    /* get the handled type */
     virtual Typed * getTyped(void) const = 0;
 };
 
@@ -628,6 +640,7 @@ struct NamedAddress : public Address {
     {
         if (!fTyped)
             // FIXME: for now assume a scalar
+            // LATER: all NamedAddress instances should be typed
             return std::vector<int>();
         return fTyped->dimensions();
     }
@@ -2080,8 +2093,15 @@ struct InstBuilder
     static DeclareTypeInst* genType(AudioType* type);
 };
 
+
+/* syntactic sugar for index computations
+ *
+ * wrapper for ValueInst* with support for basic arithmetics
+ *
+ */
 struct FIRIndex
 {
+    /* explicit constructors in order to avoid the generation implicit conversions */
     explicit FIRIndex(ValueInst * inst):
         data(inst)
     {}
@@ -2094,6 +2114,7 @@ struct FIRIndex
         data(rhs.data)
     {}
 
+    /* implicitly convert to ValueInst* in order to simplify the usage */
     operator ValueInst* (void) const
     {
         return data;

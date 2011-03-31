@@ -146,7 +146,7 @@ CodeContainer* MultirateInstructionsCompiler::signal2Container(const string& nam
     Typed * typed = declareSignalType(sig);
 
     CodeContainer* container = fContainer->createInternalContainer(name, t->nature());
-    container->fSubContainerTyped = typed;
+    container->fSubContainerTyped = typed; // HACK: for multidimensional tables, we need the complete type, not only the nature
     MultirateInstructionsCompiler C(container);
     C.compileSingleSignal(sig);
     return container;
@@ -374,8 +374,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
         pushDeclare(declareCacheBuffer);
         setCompiledCache(sig, declareCacheBuffer->load());
 
-        if (!inRecursiveLoop())
-            openLoop();
+        openLoop();
         if (isBlockRate) {
             IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), FIRIndex(0));
             pushComputePreDSPMethod(store(storeAddress, compilePrimitive(sig, FIRIndex(0))));
@@ -386,8 +385,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
             subLoop->pushBackInst(store(storeAddress, compilePrimitive(sig, storeIndex)));
             pushComputeDSPMethod(subLoop);
         }
-        if (!inRecursiveLoop())
-            closeLoop();
+        closeLoop();
 
         IndexedAddress * addressToReturn = InstBuilder::genIndexedAddress(declareCacheBuffer->getAddress(), returnIndex);
         return InstBuilder::genLoadVarInst(addressToReturn);
@@ -400,7 +398,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
 void MultirateInstructionsCompiler::setCompiledCache(Tree sig, LoadVarInst * loadCacheInst)
 {
     setCompiledExpression(sig, loadCacheInst);
-    setLoopProperty(sig, fContainer->getCurLoop());
+    setLoopProperty(sig, fContainer->getCurLoop()); // FIXME: how can we rewrite the loop property, if this loops will be absorbed?
 }
 
 ValueInst * MultirateInstructionsCompiler::getCompiledCache(Tree sig, FIRIndex const & index)
@@ -410,6 +408,8 @@ ValueInst * MultirateInstructionsCompiler::getCompiledCache(Tree sig, FIRIndex c
         LoadVarInst * bufferHandle = dynamic_cast<LoadVarInst*>(compiledExpression);
         Address * cacheAddress = bufferHandle->fAddress;
 
+        // FIXME: when we are inside a recursion, loop may have been absorbed, so we may add a dependency to nowhere
+        //        we should probably track the loop properties differently or rewrite the loop properties.
         CodeLoop * loop;
         ensure(getLoopProperty(sig, loop));
         fContainer->getCurLoop()->addBackwardDependency(loop);
@@ -951,30 +951,8 @@ ValueInst * MultirateInstructionsCompiler::compileSampleAt(Tree sig, FIRIndex co
     return InstBuilder::genLoadVarInst(addressToLoad);
 }
 
-static Tree declaredDelayLineProperty = tree(Node("declaredDelayLineProperty"));
-static Tree compiledDelayLineProperty = tree(Node("compiledDelayLineProperty"));
-
-static int getDelaylineRate(Tree delayedSignal)
-{
-    //FIXME: maybe we can simply annotate the delayline with a rate?
-    int sigRate = getSigRate(delayedSignal);
-    if (sigRate)
-        return sigRate;
-
-    Tree recursiveGroup;
-    int i;
-    if (isProj(delayedSignal, &i, recursiveGroup)) {
-        Tree id, body;
-        ensure(isRec(recursiveGroup, id, body));
-        return getDelaylineRate(nth(body, i));
-    }
-
-    // block-rate signals have a rate of one
-    AudioType * delayedSignalType = getSigType(delayedSignal);
-    // FIXME: why does this assertion rule fire? in theory it shouldn't
-    assert(delayedSignalType->variability() < kSamp);
-    return 1;
-}
+static Tree declaredDelayLineProperty = tree(Node("declaredDelayLineProperty")); // delay line has this property, if the buffer has been defined. it contains the address of the delay line
+static Tree compiledDelayLineProperty = tree(Node("compiledDelayLineProperty")); // delay line has this property, if the signal has been compiled. it contains the address of the delay line
 
 Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
 {
@@ -985,14 +963,15 @@ Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
     if (declaredDelayLine)
         return (Address*)tree2ptr(declaredDelayLine);
 
-    // if small
-    int sigRate = getDelaylineRate(arg);
+    // LATER: for now we use the algorithm for `short' delays. it can also generate `long' delays, but this case is inefficient.
+    int sigRate = getSigRate(delayline);
     assert(sigRate);
     Typed * sigType = declareSignalType(arg);
     int maxDelay = getMaxDelay(delayline);
     maxDelay = max(1, maxDelay); // FIXME: we ensure a delay of one sample, later we need to distinguish between delays of
                                  // projections and `normal' delays
 
+    /* declare and store buffers */
     ArrayTyped * mType = declareArrayTyped(sigType, maxDelay);
     ArrayTyped * rmType = declareArrayTyped(sigType, sigRate * gVecSize + maxDelay);
 
@@ -1009,6 +988,7 @@ Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
     Address * returnAddress = InstBuilder::genIndexedAddress(RM->getAddress(), InstBuilder::genIntNumInst(maxDelay));
     delayline->setProperty(declaredDelayLineProperty, tree(Node((void*)returnAddress)));
 
+    /* initialization of delay line with samples of 0 */
     ForLoopInst * clearMLoop = genSubloop("x", 0, maxDelay);
     IndexedAddress * storeAddress = InstBuilder::genIndexedAddress(M->getAddress(), clearMLoop->loadDeclaration());
 
@@ -1034,19 +1014,32 @@ Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
 
 Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
 {
-    Tree arg;
-    ensure (isSigDelayLine(delayline, arg));
+    Tree delayedSignal;
+    ensure (isSigDelayLine(delayline, delayedSignal));
 
     Tree compiledDelayLine = delayline->getProperty(compiledDelayLineProperty);
-    if (compiledDelayLine)
+    if (compiledDelayLine) {
+        /* CHECK: mimic dependency handling of faust1 */
+        int projectionIndex; Tree recursiveGroup;
+        CodeLoop * currentLoop = fContainer->getCurLoop();
+        CodeLoop * delaylineLoop;
+        if (isProj(delayedSignal, &projectionIndex, recursiveGroup) &&
+            currentLoop->findRecDefinition(recursiveGroup)) {
+            currentLoop->addRecDependency(recursiveGroup);
+        } else if (fContainer->getLoopProperty(compiledDelayLine, delaylineLoop)) {
+            currentLoop->addBackwardDependency(delaylineLoop);
+        }
+
         return (Address*)tree2ptr(compiledDelayLine);
+    }
 
     Address * delayLineAddress = declareDelayLine(delayline);
     delayline->setProperty(compiledDelayLineProperty, tree(Node((void*)delayLineAddress)));
     static Tree declareM = tree(Node("declareM"));
     static Tree declareRM = tree(Node("declareRM"));
 
-    int sigRate = getDelaylineRate(arg);
+    int sigRate = getSigRate(delayline); // FIXME: some delays are not annotated with their rate. why?
+    assert(sigRate);
     int maxDelay = getMaxDelay(delayline);
     maxDelay = max(1, maxDelay); // FIXME: we ensure a delay of one sample, later we need to distinguish between delays of
                                  // projections and `normal' delays
@@ -1054,13 +1047,14 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     DeclareVarInst * M  = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareM));
     DeclareVarInst * RM = (DeclareVarInst *)tree2ptr(delayline->getProperty(declareRM));
 
-    if (!inRecursiveLoop())
-        openLoop(); // store to struct
+    openLoop(); // store to struct
     int projectionIndex; Tree recursiveGroup;
-    if (isProj(arg, &projectionIndex, recursiveGroup)) {
+    if (isProj(delayedSignal, &projectionIndex, recursiveGroup)) {
         // projections need to be compiled into a recursive loop
         Tree id, body;
         ensure(isRec(recursiveGroup, id, body));
+        /* if we find a recursive group, it cannot be the one that we are currently compiling */
+        assert(!fContainer->getCurLoop()->findRecDefinition(recursiveGroup));
         openLoop(id);
     } else
         openLoop();
@@ -1081,13 +1075,12 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     ForLoopInst * subLoop = genSubloop("k_", 0, sigRate);
     FIRIndex subLoopIndex = getCurrentLoopIndex() * sigRate + subLoop->loadDeclaration();
     Address * address = InstBuilder::genIndexedAddress(RM->fAddress, subLoopIndex + maxDelay);
-    subLoop->pushBackInst(compileAssignment(address, arg, subLoopIndex));
+    subLoop->pushBackInst(compileAssignment(address, delayedSignal, subLoopIndex));
 
     pushComputeDSPMethod(subLoop);
 
     CodeLoop * delayLoop = fContainer->getCurLoop();
-    if (!inRecursiveLoop())
-        setLoopProperty(delayline, delayLoop);
+    setLoopProperty(delayline, delayLoop);
 
     closeLoop(); // actual loop
 
@@ -1103,15 +1096,17 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     // FIXME: we pack the writeback loop into a subloop in order to avoid the rate to be taken into account
     pushComputePostDSPMethod(writeBackLoop);
 
-    if (!inRecursiveLoop())
-        closeLoop(); // writeback loop
+    closeLoop(); // writeback loop
 
     return delayLineAddress;
 }
 
 ValueInst * MultirateInstructionsCompiler::compileSampleDelay(Tree sig, FIRIndex const & index, Tree delayline, Tree delay)
 {
-    assert(delayline->getProperty(declaredDelayLineProperty));
+    // FIXME: we declare all delay lines during the compilation of recursive groups before we use them
+    //        however it seems that some delay lines are not declared. this assertion fires e.g. when
+    //        compiling examples/smoothdelay.dsp
+    // assert(delayline->getProperty(declaredDelayLineProperty));
 
     Address * delayLineAddress = compileDelayline(delayline);
     IndexedAddress * delayAddress = static_cast<IndexedAddress*>(delayLineAddress);
@@ -1217,7 +1212,7 @@ NamedAddress * MultirateInstructionsCompiler::generateTable(Tree table, Tree tab
     CodeContainer * subContainer = signal2Container(className, tableContent);
     fContainer->addSubContainer(subContainer);
 
-    // allocate, use and delete object
+    // allocate, use and delete object: matches the function naming convention in CPPMRCodeContainer::produceInternal
     string sigName = tableName + "Sig";
 
     // allocate

@@ -34,7 +34,7 @@ class MultirateInstructionsCompiler:
 {
 public:
     MultirateInstructionsCompiler(CodeContainer* container):
-        InstructionsCompilerBase(container), fOpenRecursiveLoops(0)
+        InstructionsCompilerBase(container)
     {}
 
 private:
@@ -42,14 +42,14 @@ private:
     void compileMultiSignal(Tree rootSignal);
     void compileSingleSignal(Tree rootSignal);
 
-    // basic compilation schemes
-    void compileRecursiveGroups(Tree rootSignal);
-    void compileTop(Tree rootSignal);
-    void compileVector(NamedAddress * vec, Tree sig);
-    StatementInst * compileAssignment(Address * vec, Tree sig, FIRIndex const & index);
-    ValueInst * compileSample(Tree sig, FIRIndex const & index);
+    // basic compilation schemes:
+    void compileRecursiveGroups(Tree rootSignal);     // compile recursive groups from the leaves to the root
+    void compileTop(Tree rootSignal);                 // compile the non-recursive signal from the root
+    void compileVector(NamedAddress * vec, Tree sig); // compile a signal vector
+    StatementInst * compileAssignment(Address * vec, Tree sig, FIRIndex const & index); // compile assignment to address `vec' of signal `sig' at index `index'
+    ValueInst * compileSample(Tree sig, FIRIndex const & index); // compile sample of signal `sig' at index `index'
 
-    // signal-specific compilation
+    // signal-specific compilation rules
     ValueInst * compileSampleInput(Tree sig, int i, FIRIndex const & index);
     ValueInst * compileSampleVectorize(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     ValueInst * compileSampleSerialize(Tree sig, FIRIndex const & index, Tree arg1);
@@ -100,53 +100,39 @@ private:
     Typed * declareSignalType(Typed * type);
     ArrayTyped * declareArrayTyped(Typed * typed, int size);
     ForLoopInst* genSubloop(string const & loopSymbol, int lowBound, int highBound);
-    ValueInst * fVectorSize;
+    ValueInst * fVectorSize; ///< shortcut for accessing the gVecSize as FIR instruction
 
     // loop handling helper functions
     void openLoop(Tree recursiveSymbol, int size = 1)
     {
         fContainer->openLoop(recursiveSymbol, "j", size);
-        ++fOpenRecursiveLoops;
     }
 
     void openLoop(int size = 1)
     {
         fContainer->openLoop("j", size);
-        if (inRecursiveLoop()) {
-            CodeLoop * topRecursiveLoop = getTopRecursiveLoop();
-            assert(topRecursiveLoop);
-            fContainer->getCurLoop()->addRecDependency(topRecursiveLoop->getRecSymbol());
-        }
     }
 
     void closeLoop(void)
     {
-        if (fContainer->getCurLoop()->isRecursive())
-            --fOpenRecursiveLoops;
         fContainer->closeLoop();
     }
 
-    bool inRecursiveLoop(void) const
-    {
-        return fOpenRecursiveLoops != 0;
-    }
-
-    CodeLoop * getTopRecursiveLoop(void) const
-    {
-        CodeLoop * loop = fContainer->getCurLoop();
-
-        do {
-            if (loop->isRecursive())
-                return loop;
-            loop = loop->getEnclosingLoop();
-        } while(loop);
-
-        return loop;
-    }
-
-    int fOpenRecursiveLoops;
-
     // polymorphic function generators
+
+    /** use functor to compile possibly multidimensional primitives
+     *
+     * depending on the signal type, it compiles a scalar primitive or manually creates loops to implement multidimensional
+     * signals with scalar primitives
+     *
+     * \param sig signal to compute
+     * \param arguments container of all argument signals
+     * \param index fir index to compute
+     * \param functor requires an overloaded operator, taking an iterator range as arguments. dereferencing the iterator
+     * is assumed to return a ValueInst
+     * \param generateCasts if `true', arguments are casted to the nature of the signal
+     *
+     */
     template <typename ArgumentContainer,
               class compilePrimitiveFunctor
              >
@@ -160,6 +146,7 @@ private:
             return compileVectorSample(sig, arguments.begin(), arguments.end(), index, functor, generateCasts);
     }
 
+    /* compile multidimensional primitive */
     template <typename ArgumentIterator,
               class compilePrimitiveFunctor
              >
@@ -178,6 +165,7 @@ private:
         vector<ValueInst*> args;
         vector<Typed*> argTypes;
         vector<int> argDimensions;
+        // compile all arguments
         for (ArgumentIterator it = argsBegin; it != argsEnd; ++it) {
             args.push_back(compileSample(*it, getCurrentLoopIndex()));
             Typed * argType = declareSignalType(*it);
@@ -188,11 +176,6 @@ private:
         const int largestArgument = std::max_element(argDimensions.begin(), argDimensions.end()) - argDimensions.begin();
         const int maxDimension = argDimensions[largestArgument];
         assert (maxDimension > 0);
-
-        vector<int> dimensions = dynamic_cast<ArrayTyped*>(argTypes[largestArgument])->dimensions();
-
-        vector<ValueInst*> loopIndexStack;
-        ForLoopInst * loopTop = NULL;
 
         string primitiveId = getFreshID("primitive_");
 
@@ -209,6 +192,10 @@ private:
         DeclareVarInst* resultBuffer = InstBuilder::genDecStackVar(primitiveId + "_result", resultBufferType);
         pushDeclare(resultBuffer);
 
+        // create subloops
+        vector<int> dimensions = dynamic_cast<ArrayTyped*>(argTypes[largestArgument])->dimensions();
+        vector<ValueInst*> loopIndexStack;
+        ForLoopInst * loopTop = NULL;
         int currentDimension = maxDimension;
         do {
             string loopVar;
@@ -271,6 +258,7 @@ private:
         return result;
     }
 
+    /* compile scalar primitive */
     template <typename ArgumentIterator,
               class compilePrimitiveFunctor
              >
@@ -290,12 +278,14 @@ private:
                 hasFloatArgs = true;
         }
 
+        // compile arguments
         vector<ValueInst *> scalarArguments;
         for (ArgumentIterator it = argsBegin; it != argsEnd; ++it) {
             Tree arg = *it;
             ValueInst * compiledArg = compileSample(arg, index);
             int argumentNature = getSigType(arg)->nature();
 
+            // under certain conditions, we add explicit type casts
             if (createCasts && hasFloatArgs && (argumentNature == kInt))
                 compiledArg = InstBuilder::genCastNumInst(compiledArg, InstBuilder::genBasicTyped(itfloat()));
 
@@ -304,6 +294,7 @@ private:
 
         ValueInst * result = generatePrimitive(scalarArguments.begin(), scalarArguments.end());
 
+        // under certain conditions, we add explicit type casts
         if (createCasts && hasFloatArgs && (resultNature == kInt))
             result = InstBuilder::genCastNumInst(result, InstBuilder::genBasicTyped(Typed::kInt));
 

@@ -129,6 +129,12 @@ class CPPWorkStealingCodeContainer : public WSSCodeContainer, public CPPCodeCont
 
 };
 
+/* multirate code container class
+ *
+ * partially adapted from VectorCodeContainer.
+ * FIXME: some part of the imlementation can be merged with VectorCodeContainer
+ *
+ */
 class CPPMRCodeContainer : public CPPCodeContainer {
     public:
         BlockInst * mrBlock;
@@ -144,6 +150,7 @@ class CPPMRCodeContainer : public CPPCodeContainer {
             return new CPPMRCodeContainer(name, "", 0, 1, fOut, sub_container_type);
         }
 
+        /* rewrite FIR */
         void processFIR(void)
         {
             string index = "index";
