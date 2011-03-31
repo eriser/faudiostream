@@ -89,7 +89,7 @@ static void mappingFunction(Tree sig)
             updateMinDelayProperty(delayline, iSize);
             updateMaxDelayProperty(delayline, iSize);
         } else {
-            int iSizeMin = ceil(getSigType(size)->getInterval().lo);
+            int iSizeMin = floor(getSigType(size)->getInterval().lo);
             int iSizeMax = ceil(getSigType(size)->getInterval().hi);
             updateMaxDelayProperty(delayline, iSizeMin);
             updateMaxDelayProperty(delayline, iSizeMax);
