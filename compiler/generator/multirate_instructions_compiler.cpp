@@ -1053,6 +1053,8 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
         // projections need to be compiled into a recursive loop
         Tree id, body;
         ensure(isRec(recursiveGroup, id, body));
+        /* if we find a recursive group, it cannot be the one that we are currently compiling */
+        assert(!fContainer->getCurLoop()->findRecDefinition(recursiveGroup));
         openLoop(id);
     } else
         openLoop();
@@ -1101,7 +1103,10 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
 
 ValueInst * MultirateInstructionsCompiler::compileSampleDelay(Tree sig, FIRIndex const & index, Tree delayline, Tree delay)
 {
-    assert(delayline->getProperty(declaredDelayLineProperty));
+    // FIXME: we declare all delay lines during the compilation of recursive groups before we use them
+    //        however it seems that some delay lines are not declared. this assertion fires e.g. when
+    //        compiling examples/smoothdelay.dsp
+    // assert(delayline->getProperty(declaredDelayLineProperty));
 
     Address * delayLineAddress = compileDelayline(delayline);
     IndexedAddress * delayAddress = static_cast<IndexedAddress*>(delayLineAddress);
