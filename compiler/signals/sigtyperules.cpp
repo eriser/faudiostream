@@ -324,7 +324,7 @@ static Type infereSigType(Tree sig, Tree env)
 		return castInterval(sampCast(t1), reunion(t1->getInterval(), interval(0,0)));
 	}
 	else if (isSigDelayLine(sig, s1))
-                                                return T(s1, env);
+                                                return T(s1, env)->promoteVariability(kSamp);
 	else if (isSigBinOp(sig, &i, s1, s2))       return infereBinopType(sig, env, i, s1, s2);
 	else if (isSigIntCast(sig, s1))			    return intCast(T(s1,env));
 	else if (isSigFloatCast(sig, s1)) 			return floatCast(T(s1,env));
