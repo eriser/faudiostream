@@ -42,14 +42,14 @@ private:
     void compileMultiSignal(Tree rootSignal);
     void compileSingleSignal(Tree rootSignal);
 
-    // basic compilation schemes
-    void compileRecursiveGroups(Tree rootSignal);
-    void compileTop(Tree rootSignal);
-    void compileVector(NamedAddress * vec, Tree sig);
-    StatementInst * compileAssignment(Address * vec, Tree sig, FIRIndex const & index);
-    ValueInst * compileSample(Tree sig, FIRIndex const & index);
+    // basic compilation schemes:
+    void compileRecursiveGroups(Tree rootSignal);     // compile recursive groups from the leaves to the root
+    void compileTop(Tree rootSignal);                 // compile the non-recursive signal from the root
+    void compileVector(NamedAddress * vec, Tree sig); // compile a signal vector
+    StatementInst * compileAssignment(Address * vec, Tree sig, FIRIndex const & index); // compile assignment to address `vec' of signal `sig' at index `index'
+    ValueInst * compileSample(Tree sig, FIRIndex const & index); // compile sample of signal `sig' at index `index'
 
-    // signal-specific compilation
+    // signal-specific compilation rules
     ValueInst * compileSampleInput(Tree sig, int i, FIRIndex const & index);
     ValueInst * compileSampleVectorize(Tree sig, FIRIndex const & index, Tree arg1, Tree arg2);
     ValueInst * compileSampleSerialize(Tree sig, FIRIndex const & index, Tree arg1);
@@ -100,7 +100,7 @@ private:
     Typed * declareSignalType(Typed * type);
     ArrayTyped * declareArrayTyped(Typed * typed, int size);
     ForLoopInst* genSubloop(string const & loopSymbol, int lowBound, int highBound);
-    ValueInst * fVectorSize;
+    ValueInst * fVectorSize; ///< shortcut for accessing the gVecSize as FIR instruction
 
     // loop handling helper functions
     void openLoop(Tree recursiveSymbol, int size = 1)
@@ -278,12 +278,14 @@ private:
                 hasFloatArgs = true;
         }
 
+        // compile arguments
         vector<ValueInst *> scalarArguments;
         for (ArgumentIterator it = argsBegin; it != argsEnd; ++it) {
             Tree arg = *it;
             ValueInst * compiledArg = compileSample(arg, index);
             int argumentNature = getSigType(arg)->nature();
 
+            // under certain conditions, we add explicit type casts
             if (createCasts && hasFloatArgs && (argumentNature == kInt))
                 compiledArg = InstBuilder::genCastNumInst(compiledArg, InstBuilder::genBasicTyped(itfloat()));
 
@@ -292,6 +294,7 @@ private:
 
         ValueInst * result = generatePrimitive(scalarArguments.begin(), scalarArguments.end());
 
+        // under certain conditions, we add explicit type casts
         if (createCasts && hasFloatArgs && (resultNature == kInt))
             result = InstBuilder::genCastNumInst(result, InstBuilder::genBasicTyped(Typed::kInt));
 

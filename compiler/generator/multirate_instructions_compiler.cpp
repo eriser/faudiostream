@@ -951,8 +951,8 @@ ValueInst * MultirateInstructionsCompiler::compileSampleAt(Tree sig, FIRIndex co
     return InstBuilder::genLoadVarInst(addressToLoad);
 }
 
-static Tree declaredDelayLineProperty = tree(Node("declaredDelayLineProperty"));
-static Tree compiledDelayLineProperty = tree(Node("compiledDelayLineProperty"));
+static Tree declaredDelayLineProperty = tree(Node("declaredDelayLineProperty")); // delay line has this property, if the buffer has been defined. it contains the address of the delay line
+static Tree compiledDelayLineProperty = tree(Node("compiledDelayLineProperty")); // delay line has this property, if the signal has been compiled. it contains the address of the delay line
 
 Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
 {
@@ -963,7 +963,7 @@ Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
     if (declaredDelayLine)
         return (Address*)tree2ptr(declaredDelayLine);
 
-    // if small
+    // LATER: for now we use the algorithm for `short' delays. it can also generate `long' delays, but this case is inefficient.
     int sigRate = getSigRate(delayline);
     assert(sigRate);
     Typed * sigType = declareSignalType(arg);
