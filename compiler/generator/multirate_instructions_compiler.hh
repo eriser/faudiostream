@@ -119,6 +119,20 @@ private:
     }
 
     // polymorphic function generators
+
+    /** use functor to compile possibly multidimensional primitives
+     *
+     * depending on the signal type, it compiles a scalar primitive or manually creates loops to implement multidimensional
+     * signals with scalar primitives
+     *
+     * \param sig signal to compute
+     * \param arguments container of all argument signals
+     * \param index fir index to compute
+     * \param functor requires an overloaded operator, taking an iterator range as arguments. dereferencing the iterator
+     * is assumed to return a ValueInst
+     * \param generateCasts if `true', arguments are casted to the nature of the signal
+     *
+     */
     template <typename ArgumentContainer,
               class compilePrimitiveFunctor
              >
@@ -132,6 +146,7 @@ private:
             return compileVectorSample(sig, arguments.begin(), arguments.end(), index, functor, generateCasts);
     }
 
+    /* compile multidimensional primitive */
     template <typename ArgumentIterator,
               class compilePrimitiveFunctor
              >
@@ -150,6 +165,7 @@ private:
         vector<ValueInst*> args;
         vector<Typed*> argTypes;
         vector<int> argDimensions;
+        // compile all arguments
         for (ArgumentIterator it = argsBegin; it != argsEnd; ++it) {
             args.push_back(compileSample(*it, getCurrentLoopIndex()));
             Typed * argType = declareSignalType(*it);
@@ -160,11 +176,6 @@ private:
         const int largestArgument = std::max_element(argDimensions.begin(), argDimensions.end()) - argDimensions.begin();
         const int maxDimension = argDimensions[largestArgument];
         assert (maxDimension > 0);
-
-        vector<int> dimensions = dynamic_cast<ArrayTyped*>(argTypes[largestArgument])->dimensions();
-
-        vector<ValueInst*> loopIndexStack;
-        ForLoopInst * loopTop = NULL;
 
         string primitiveId = getFreshID("primitive_");
 
@@ -181,6 +192,10 @@ private:
         DeclareVarInst* resultBuffer = InstBuilder::genDecStackVar(primitiveId + "_result", resultBufferType);
         pushDeclare(resultBuffer);
 
+        // create subloops
+        vector<int> dimensions = dynamic_cast<ArrayTyped*>(argTypes[largestArgument])->dimensions();
+        vector<ValueInst*> loopIndexStack;
+        ForLoopInst * loopTop = NULL;
         int currentDimension = maxDimension;
         do {
             string loopVar;
@@ -243,6 +258,7 @@ private:
         return result;
     }
 
+    /* compile scalar primitive */
     template <typename ArgumentIterator,
               class compilePrimitiveFunctor
              >
