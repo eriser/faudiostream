@@ -398,7 +398,7 @@ ValueInst * MultirateInstructionsCompiler::compileSamplePrimitive(Tree sig, FIRI
 void MultirateInstructionsCompiler::setCompiledCache(Tree sig, LoadVarInst * loadCacheInst)
 {
     setCompiledExpression(sig, loadCacheInst);
-    setLoopProperty(sig, fContainer->getCurLoop());
+    setLoopProperty(sig, fContainer->getCurLoop()); // FIXME: how can we rewrite the loop property, if this loops will be absorbed?
 }
 
 ValueInst * MultirateInstructionsCompiler::getCompiledCache(Tree sig, FIRIndex const & index)
