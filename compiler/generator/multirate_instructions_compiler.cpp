@@ -964,7 +964,7 @@ Address * MultirateInstructionsCompiler::declareDelayLine(Tree delayline)
         return (Address*)tree2ptr(declaredDelayLine);
 
     // if small
-    int sigRate = getSigRate(arg);
+    int sigRate = getSigRate(delayline);
     assert(sigRate);
     Typed * sigType = declareSignalType(arg);
     int maxDelay = getMaxDelay(delayline);
@@ -1038,7 +1038,7 @@ Address * MultirateInstructionsCompiler::compileDelayline(Tree delayline)
     static Tree declareM = tree(Node("declareM"));
     static Tree declareRM = tree(Node("declareRM"));
 
-    int sigRate = getSigRate(delayedSignal); // FIXME: some delays are not annotated with their rate. why?
+    int sigRate = getSigRate(delayline); // FIXME: some delays are not annotated with their rate. why?
     assert(sigRate);
     int maxDelay = getMaxDelay(delayline);
     maxDelay = max(1, maxDelay); // FIXME: we ensure a delay of one sample, later we need to distinguish between delays of
