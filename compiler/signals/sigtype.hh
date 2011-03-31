@@ -134,6 +134,12 @@ class AudioType
         return 0;
     }
 
+    virtual vector<int> dimensions() const
+    {
+        return vector<int>();
+    }
+
+
     virtual AudioType * getScalarBaseType(void) = 0;
 };
 

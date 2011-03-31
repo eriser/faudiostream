@@ -681,8 +681,7 @@ static Type infereConcatType(Tree sig, Tree env, Tree s1, Tree s2)
     Type dt1 = vt1->dereferenceType();
     Type dt2 = vt2->dereferenceType();
 
-    // TODO: we need to implement a compatibility check for concatenation
-    if (dt1 != dt2) {
+    if (dt1->dimensions() != dt2->dimensions()) {
         printf("Type error: dimension mismatch for concatenation\n");
         exit(1);
     }
