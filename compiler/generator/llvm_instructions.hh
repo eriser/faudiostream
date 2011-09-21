@@ -1199,8 +1199,11 @@ class LLVMInstVisitor : public InstVisitor, public LLVMTypeHelper {
                 for (int i = 0; i < size; i++) {
                     args.push_back(static_cast<Constant*>(genInt32(0)));
                 }
+            #ifdef LLVM_28
                 Constant* mask = ConstantVector::get(&args[0], size);
-                return fBuilder->CreateShuffleVector(vector, vector, mask, "splat");
+            #endif
+                Constant* mask = ConstantVector::get(args);
+              return fBuilder->CreateShuffleVector(vector, vector, mask, "splat");
             } else {
                 return load;
             }
