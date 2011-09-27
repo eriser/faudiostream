@@ -363,7 +363,7 @@ class CPPInstVisitor : public InstVisitor, public StringTypeManager {
                 indexSeries += "[" + index + "]";
 
                 string currentLoopHead;
-                Loki::SPrintf(currentLoopHead, "for (int %s = 0; %s != %d; ++%s) {")(index)(index)(dimensions[i])(index);
+                Loki::SPrintf(currentLoopHead, "for (int %s = 0; %s < %d; %s++) {")(index)(index)(dimensions[i])(index);
                 *fOut << currentLoopHead;
                 tab1(fTab + i + 1, *fOut);
             }

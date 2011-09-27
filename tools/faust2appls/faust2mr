@@ -1,0 +1,6 @@
+#!/bin/bash
+for f in $@; do
+    faust -a mr-plot.cpp $f -o ${f%.dsp}.cpp
+	g++ ${f%.dsp}.cpp -o ${f%.dsp}
+done
+

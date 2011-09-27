@@ -22,4 +22,5 @@ install:
 	install faust2svg $(prefix)/bin
 	install faust2graph $(prefix)/bin
 	install faust2graphviewer $(prefix)/bin
+	install faust2mr $(prefix)/bin
 
