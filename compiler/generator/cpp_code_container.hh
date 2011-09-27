@@ -189,7 +189,7 @@ class CPPMRCodeContainer : public CPPCodeContainer {
 
             // Put loop in block_res
             block_res->pushBackInst(loop);
-
+/*
             // Remaining frames
             block_res->pushBackInst(InstBuilder::genLabelInst("// Remaining frames"));
 
@@ -211,8 +211,9 @@ class CPPMRCodeContainer : public CPPCodeContainer {
             generateDAGLoop(then_block, count_dec2);
 
             block_res->pushBackInst(InstBuilder::genIfInst(if_cond, then_block));
-
+*/
             mrBlock = block_res;
+
         }
 
 

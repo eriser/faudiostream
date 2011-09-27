@@ -383,8 +383,8 @@ class channels
 	~channels()
 	{
 		// free separate input channels
-		for (int i = 0; i < fNumChannels; i++) {
-		//	free(fBuffers[i]);
+		for (int chan = 0; chan < fNumChannels; chan++) {
+			free(fBuffers[chan]);
 		}
 	}
 
