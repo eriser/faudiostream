@@ -37,7 +37,7 @@ template <typename C> class jsonui
 	std::map<std::string, std::string>	fMeta;	// the current meta declarations
 
 	public:
-				 jsonui(const char *name, const char* address, int port) : fFactory(0) { fFactory = new jsonfactory(name, address, port); }
+				 jsonui(const char *name, const char* address, int port) { fFactory = new jsonfactory(name, address, port); }
 		virtual ~jsonui()				{ delete fFactory; }
 
 		// -- widget's layouts
@@ -57,8 +57,8 @@ template <typename C> class jsonui
 							{ fFactory->addnode<C>( "nentry", label, init, min, max, step, fMeta); }
 
 		// -- passive widgets
-		virtual void addHorizontalBargraph(const char* label, C* zone, C min, C max)		{ fFactory->addnode<C>( "hbargraph", label, fMeta); }
-		virtual void addVerticalBargraph(const char* label, C* zone, float min, float max)	{ fFactory->addnode<C>( "vbargraph", label, fMeta); }
+		virtual void addHorizontalBargraph(const char* label, C* zone, C min, C max)		{ fFactory->addnode<C>( "hbargraph", label, min, max, fMeta); }
+		virtual void addVerticalBargraph(const char* label, C* zone, float min, float max)	{ fFactory->addnode<C>( "vbargraph", label, min, max, fMeta); }
 
 		// -- metadata declarations
 		virtual void declare(C* , const char* key, const char* val)		{ fMeta[key] = val; }
@@ -73,7 +73,7 @@ template <typename C> class jsonui
 		//--------------------------------------------
 		// and eventually how to get the json as a string
 		//--------------------------------------------
-		const char*	json ()									{ return fFactory->root().json(); }
+		std::string json ()							{ return fFactory->root().json(); }
 };
 
 } //end namespace

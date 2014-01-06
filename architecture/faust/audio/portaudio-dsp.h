@@ -160,6 +160,9 @@ class portaudio : public audio {
             fDsp->compute(frames, ibuf, obuf);
             return paContinue;
         }
+        
+        virtual int get_buffer_size() { return fBufferSize; }
+        virtual int get_sample_rate() { return fSampleRate; }
 };
 
 //----------------------------------------------------------------------------
