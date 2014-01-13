@@ -100,7 +100,7 @@ static void jack_shutdown_callback(const char* message, void* arg)
     } else {
         _name = [[[NSProcessInfo processInfo] processName] UTF8String];
     }
-       
+    
     interface = new CocoaUI([UIApplication sharedApplication].keyWindow, self, &metadata);
     finterface = new FUI();
     
@@ -125,6 +125,7 @@ static void jack_shutdown_callback(const char* message, void* arg)
     
     snprintf(rcfilename, 256, "%s/Library/Caches/%s", home, _name);
     finterface->recallState(rcfilename);
+    
     [self updateGui];
     
     // Notification when device orientation changed

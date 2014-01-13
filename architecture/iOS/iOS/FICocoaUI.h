@@ -1556,7 +1556,7 @@ public:
         fViewController.dspScrollView.indicatorStyle = UIScrollViewIndicatorStyleWhite;
         
         [window addSubview:viewController.view];
-        [window makeKeyAndVisible];
+        [window makeKeyAndVisible];        
     }
     
     ~CocoaUI()
@@ -1599,7 +1599,7 @@ public:
         float                           rx = 1.f;
         float                           cpt = 0.f;
         float                           newVal = 0.f;
-
+        
         // Loop on every boxes of the layout
         for (i = fWidgetList.begin(); i != fWidgetList.end(); i++)
         {
@@ -1676,10 +1676,24 @@ public:
                                 else labelHeight = 0.f;
                                 
                                 // Place objects on all the height of the box
+                                float y;
+                                float h;
+                                
+                                if (contentSize.height == kSpaceSize)
+                                {
+                                    y = 0.f;
+                                    h = 0.f;
+                                }
+                                else
+                                {
+                                    y = ((*j)->getY() - kSpaceSize - labelHeight) * ((box->getH() - 2.f * kSpaceSize - labelHeight) / (contentSize.height - kSpaceSize - labelHeight)) + kSpaceSize + labelHeight;
+                                    h = (*j)->getH() * ((box->getH() - 2.f * kSpaceSize - labelHeight) / (contentSize.height - kSpaceSize - labelHeight));
+                                }
+                                
                                 (*j)->setFrame((*j)->getX(),
-                                               ((*j)->getY() - kSpaceSize - labelHeight) * ((box->getH() - 2.f * kSpaceSize - labelHeight) / (contentSize.height - kSpaceSize - labelHeight)) + kSpaceSize + labelHeight,
+                                               y,
                                                (*j)->getW(),
-                                               (*j)->getH() * ((box->getH() - 2.f * kSpaceSize - labelHeight) / (contentSize.height - kSpaceSize - labelHeight)));
+                                               h);
                             }
                         }
                     }
@@ -1750,9 +1764,23 @@ public:
                             if ((*j)->getParent() == box)
                             {
                                 // Place objects on all the width of the box
-                                (*j)->setFrame(((*j)->getX() - kSpaceSize) * ((box->getW() - 2.f * kSpaceSize) / (contentSize.width - kSpaceSize)) + kSpaceSize,
+                                float x;
+                                float w;
+                                
+                                if (contentSize.width == kSpaceSize)
+                                {
+                                    x = 0.f;
+                                    w = 0.f;
+                                }
+                                else
+                                {
+                                    x = ((*j)->getX() - kSpaceSize) * ((box->getW() - 2.f * kSpaceSize) / (contentSize.width - kSpaceSize)) + kSpaceSize;
+                                    w = (*j)->getW() * ((box->getW() - 2.f * kSpaceSize) / (contentSize.width - kSpaceSize));
+                                }
+                                
+                                (*j)->setFrame(x,
                                                (*j)->getY(),
-                                               (*j)->getW() * ((box->getW() - 2.f * kSpaceSize) / (contentSize.width - kSpaceSize)),
+                                               w,
                                                (*j)->getH());
                             }
                         }
@@ -2343,7 +2371,7 @@ public:
             {
 				fUnit[zone] = value;
 			}
-            if (strcmp(key,"hidden") == 0)
+            else if (strcmp(key,"hidden") == 0)
             {
 				NSString* str = [NSString stringWithCString:value encoding:NSUTF8StringEncoding];
                 NSArray* arr = [str componentsSeparatedByString:@" "];
