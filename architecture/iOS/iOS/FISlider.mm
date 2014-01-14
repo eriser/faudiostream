@@ -136,6 +136,8 @@
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
+    if (self.hideOnGUI) return;
+    
 	UITouch *touch = [touches anyObject];
 	CGPoint touchPosition = [touch locationInView:self];
 	CGFloat handleOrigin;
@@ -175,6 +177,8 @@
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
 {
+    if (self.hideOnGUI) return;
+    
 	if (touchHandleOffset == -1)
 		return;
 

@@ -59,12 +59,16 @@
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
+    if (self.hideOnGUI) return;
+    
     if (self.type == kPushButtonType || self.type == kTabItemButtonType) self.value = 1.f;
     [self setNeedsDisplay];
 }
 
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
 {
+    if (self.hideOnGUI) return;
+    
     if (self.type == kToggleButtonType) self.value = 1.f - self.value;
     else if (self.type == kPushButtonType) self.value = 0.f;
     [self setNeedsDisplay];
@@ -73,11 +77,15 @@
 // Function only here to refresh and intercept dble click to prevent zoom of the scroll view
 - (void)doubleTap:(UIGestureRecognizer *)gesture
 {
+    if (self.hideOnGUI) return;
+    
     [self setNeedsDisplay];
 }
 
 - (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
 {
+    if (self.hideOnGUI) return;
+    
     if (self.type == kToggleButtonType) self.value = 1.f - self.value;
     else if (self.type == kPushButtonType) self.value = 0.f;
     [self setNeedsDisplay];

@@ -176,7 +176,9 @@
 }
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
-{    
+{
+    if (self.hideOnGUI) return;
+    
     self.motionBlocked = YES;
     
 	CGPoint thisPoint = [[touches anyObject] locationInView:self];
@@ -201,6 +203,8 @@
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
 {
+    if (self.hideOnGUI) return;
+    
     self.motionBlocked = YES;
     
 	CGPoint thisPoint = [[touches anyObject] locationInView:self];
