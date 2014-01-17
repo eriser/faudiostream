@@ -1055,6 +1055,9 @@ T findCorrespondingUiItem(FIResponder* sender)
     // If no uiCocoaItem found, it's an error so we don't show the window
     if (!_selectedWidget) return;
     
+    // If widget is hidden we don't show the window
+    if (_selectedWidget->getHideOnGUI()) return;
+    
     // Otherwise, set it selected (for selection display)
     _selectedWidget->setSelected(YES);
     
