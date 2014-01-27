@@ -29,6 +29,8 @@
 {
     [UIApplication sharedApplication].statusBarStyle = UIStatusBarStyleBlackOpaque;
     
+    [UIApplication sharedApplication].idleTimerDisabled = YES;
+    
     return YES;
 }
 
