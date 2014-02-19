@@ -25,6 +25,7 @@
 @synthesize sampleRate = _sampleRate;
 @synthesize bufferSize = _bufferSize;
 @synthesize openWidgetPanel = _openWidgetPanel;
+@synthesize concertUI = _concertUI;
 
 
 - (void)awakeFromNib
@@ -43,7 +44,8 @@
 
 - (void)viewDidLoad
 {
-    int tmp = 0;
+    int tmp1 = 0;
+    int tmp2 = 0;
     [super viewDidLoad];
     
     // Read user preferences
@@ -53,9 +55,13 @@
     _bufferSize = [[NSUserDefaults standardUserDefaults] integerForKey:@"bufferSize"];
     if (_bufferSize == 0) _bufferSize = 256;
     
-    tmp = [[NSUserDefaults standardUserDefaults] integerForKey:@"openWidgetPanel"];
-    if (tmp == 0) _openWidgetPanel = YES;
-    else _openWidgetPanel = (BOOL)(tmp - 1);
+    tmp1 = [[NSUserDefaults standardUserDefaults] integerForKey:@"openWidgetPanel"];
+    if (tmp1 == 0) _openWidgetPanel = YES;
+    else _openWidgetPanel = (BOOL)(tmp1 - 1);
+    
+    tmp2 = [[NSUserDefaults standardUserDefaults] integerForKey:@"concertUI"];
+    if (tmp2 == 0) _concertUI = YES;
+    else _concertUI = (BOOL)(tmp2 - 1);
         
     // Update UI
     _sampleRateSlider.value = [self sampleRateToSliderValue:_sampleRate];
@@ -65,6 +71,7 @@
     _bufferSizeLabel.text = [NSString stringWithFormat:@"%i", _bufferSize];
     
     [_openWidgetPanelSwitch setOn:_openWidgetPanel animated:NO];
+    [_concertUISwitch setOn:_concertUI animated:NO];
     
 #ifdef JACK_IOS
     // Test Jack
@@ -118,17 +125,20 @@
 
 - (IBAction)done:(id)sender
 {
-    int tmp = (int)(_openWidgetPanel) + 1;
+    int tmp1 = (int)(_openWidgetPanel) + 1;
+    int tmp2 = (int)(_concertUI) + 1;
     
     // Write user preferences
     [[NSUserDefaults standardUserDefaults] setInteger:_sampleRate forKey:@"sampleRate"];
     [[NSUserDefaults standardUserDefaults] setInteger:_bufferSize forKey:@"bufferSize"];
-    [[NSUserDefaults standardUserDefaults] setInteger:tmp forKey:@"openWidgetPanel"];
+    [[NSUserDefaults standardUserDefaults] setInteger:tmp1 forKey:@"openWidgetPanel"];
+    [[NSUserDefaults standardUserDefaults] setInteger:tmp2 forKey:@"concertUI"];
 	[[NSUserDefaults standardUserDefaults] synchronize];
         
     // Update preferences
     [((FIMainViewController*)self.delegate) restartAudioWithBufferSize:_bufferSize sampleRate:_sampleRate];
     [((FIMainViewController*)self.delegate) setOpenWidgetPanel:_openWidgetPanel];
+    [((FIMainViewController*)self.delegate) setConcertUI:_concertUI];
     
     // Dismiss view
     [self.delegate flipsideViewControllerDidFinish:self];
@@ -149,6 +159,11 @@
 - (IBAction)openWidgetPanelSwitchMoved:(id)sender
 {
     _openWidgetPanel = ((UISwitch*)sender).on;
+}
+
+- (IBAction)concertUISwitchMoved:(id)sender
+{
+    _concertUI = ((UISwitch*)sender).on;
 }
 
 - (IBAction)deleteAssignationsButtonClicked:(id)sender
@@ -185,7 +200,8 @@
             key = ((NSString*)[keysArray objectAtIndex:i]);
             if ([key compare:@"sampleRate"] != NSOrderedSame
                 && [key compare:@"bufferSize"] != NSOrderedSame
-                && [key compare:@"openWidgetPanel"] != NSOrderedSame)
+                && [key compare:@"openWidgetPanel"] != NSOrderedSame
+                && [key compare:@"concertUI"] != NSOrderedSame)
             {
                 [[NSUserDefaults standardUserDefaults] removeObjectForKey:key];
             }

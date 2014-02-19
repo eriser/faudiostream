@@ -129,6 +129,7 @@ class uiBox;
 - (void)buttonSetToZero:(id)sender;
 - (void)zoomToWidget:(FIResponder*)widget;
 - (void)setOpenWidgetPanel:(BOOL)openWidgetPanelOnLongTouch;
+- (void)setConcertUI:(BOOL)state;
 
 // Audio
 - (void)restartAudioWithBufferSize:(int)bufferSize sampleRate:(int)sampleRate;

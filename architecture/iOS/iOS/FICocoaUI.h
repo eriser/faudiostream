@@ -139,6 +139,8 @@ class uiBox;
 CGPoint inBoxPosition2absolutePosition(float x, float y, uiCocoaItem* box);
 CGPoint absolutePosition(uiCocoaItem* widget);
 
+extern BOOL concertUI;
+
 
 // All Cocoa widget classes inheritate from uiCocoaItem, which inheritate from Faust uiItem
 class uiCocoaItem : public uiItem
@@ -1264,8 +1266,17 @@ private:
             }
         }
         
-        i = fWidgetList.begin();
         return dynamic_cast<uiBox*>(*i);
+        
+        /*
+        SL : le 19/02/14
+        if (fWidgetList.size() > 0) {
+            i = fWidgetList.begin();
+            return dynamic_cast<uiBox*>(*i);
+        } else {
+            return NULL;
+        }
+        */
     }
     
     // General rules to place objet
@@ -1583,6 +1594,17 @@ public:
         for (i = fWidgetList.begin(); i != fWidgetList.end(); i++)
         {
             (*i)->setFrame((*i)->getAbstractX(), (*i)->getAbstractY(), (*i)->getAbstractW(), (*i)->getAbstractH());
+        }
+    }
+    
+    // SL le 19/02/14
+    void setHideOnGUI(BOOL state)
+    {
+        list<uiCocoaItem*>::iterator    i = fWidgetList.begin();
+        
+        for (i = fWidgetList.begin(); i != fWidgetList.end(); i++)
+        {
+            (*i)->setHideOnGUI(state);
         }
     }
     
@@ -2353,7 +2375,9 @@ public:
                 
                 if ([((NSString*)[arr objectAtIndex:0]) integerValue] == 1)
                 {
-                    fNextBoxIsHideOnGUI = true;
+                    // SL : 19/02/14
+                    //fNextBoxIsHideOnGUI = true;
+                    fNextBoxIsHideOnGUI = concertUI;
                 }
             }
 		}
@@ -2378,7 +2402,9 @@ public:
             
                 if ([((NSString*)[arr objectAtIndex:0]) integerValue] == 1)
                 {
-                    fHideOnGUI[zone] = true;
+                    // SL : 19/02/14
+                    //fHideOnGUI[zone] = true;
+                    fHideOnGUI[zone] = concertUI;
                 }
             }
 			else if (strcmp(key,"style") == 0)

@@ -47,6 +47,7 @@ char rcfilename[256];
 int sampleRate = 0;
 int	bufferSize = 0;
 BOOL openWidgetPanel = YES;
+BOOL concertUI = YES;
 
 - (void)didReceiveMemoryWarning
 {
@@ -75,7 +76,8 @@ static void jack_shutdown_callback(const char* message, void* arg)
 
 - (void)viewDidLoad
 {
-    int tmp = 0;
+    int tmp1 = 0;
+    int tmp2 = 0;
     
     // General UI initializations
     _widgetPreferencesView.hidden = YES;
@@ -111,9 +113,13 @@ static void jack_shutdown_callback(const char* message, void* arg)
     bufferSize = [[NSUserDefaults standardUserDefaults] integerForKey:@"bufferSize"];
     if (bufferSize == 0) bufferSize = 256;
     
-    tmp = [[NSUserDefaults standardUserDefaults] integerForKey:@"openWidgetPanel"];
-    if (tmp == 0) openWidgetPanel = YES;
-    else openWidgetPanel = (BOOL)(tmp - 1);
+    tmp1 = [[NSUserDefaults standardUserDefaults] integerForKey:@"openWidgetPanel"];
+    if (tmp1 == 0) openWidgetPanel = YES;
+    else openWidgetPanel = (BOOL)(tmp1 - 1);
+    
+    tmp2 = [[NSUserDefaults standardUserDefaults] integerForKey:@"concertUI"];
+    if (tmp2 == 0) concertUI = YES;
+    else concertUI = (BOOL)(tmp2 - 1);
     
     [self openAudio];
     [self displayTitle];
@@ -743,6 +749,7 @@ T findCorrespondingUiItem(FIResponder* sender)
 #endif
 }
 
+
 // Locked box : box currently zoomed in
 - (void)zoomToLockedBox
 {
@@ -934,6 +941,32 @@ T findCorrespondingUiItem(FIResponder* sender)
     [self updateGui];
 }
 
+- (void)setConcertUI:(BOOL)state
+{
+    concertUI = state;
+    
+    //interface->saveAbstractLayout();
+    //interface->loadAbstractLayout();
+    //interface->setHideOnGUI(state);
+    //interface->saveAbstractLayout();
+    
+    //[self updateGui];
+    
+    /*
+    delete interface;
+    interface = new CocoaUI([UIApplication sharedApplication].keyWindow, self, &metadata);
+    DSP.buildUserInterface(interface);
+    
+    [self updateGui];
+    
+    // Abstract layout is the layout computed without regarding screen dimensions. To be displayed, we adapt it to the device and orientition
+    interface->saveAbstractLayout();
+
+    // Locked box is the currently zoomed in box. At launch time, this box is the main box
+    _lockedBox = interface->getMainBox();
+    */
+
+}
 
 #pragma mark - Audio
 

@@ -36,22 +36,26 @@
     IBOutlet UISlider*              _bufferSizeSlider;
     IBOutlet UILabel*               _bufferSizeLabel;
     IBOutlet UISwitch*              _openWidgetPanelSwitch;
+    IBOutlet UISwitch*              _concertUISwitch;
     
     int                             _sampleRate;
     int                             _bufferSize;
     BOOL                            _openWidgetPanel;
+    BOOL                            _concertUI;
 }
 
 @property (assign, nonatomic) IBOutlet id <FIFlipsideViewControllerDelegate> delegate;
 @property (nonatomic, nonatomic) int sampleRate;
 @property (nonatomic, nonatomic) int bufferSize;
 @property (nonatomic, nonatomic) BOOL openWidgetPanel;
+@property (nonatomic, nonatomic) BOOL concertUI;
 
 
 - (IBAction)done:(id)sender;
 - (IBAction)sampleRateSliderMoved:(id)sender;
 - (IBAction)bufferSizeSliderMoved:(id)sender;
 - (IBAction)openWidgetPanelSwitchMoved:(id)sender;
+- (IBAction)concertUISwitchMoved:(id)sender;
 - (IBAction)deleteAssignationsButtonClicked:(id)sender;
 
 - (int)sampleRateToSliderValue:(int)sampleRate;
