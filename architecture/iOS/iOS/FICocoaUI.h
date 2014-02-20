@@ -183,7 +183,6 @@ protected:
     
 public:
     
-    FIMainViewController*   mainViewController;
     UILabel*                fLabel;
     float                   fInit;
     
@@ -1223,6 +1222,15 @@ class CocoaUI : public GUI
 public:
     list <uiCocoaItem*>             fWidgetList;
     
+    void setHidden(bool state)
+    {
+        map<float*, bool>::iterator it;
+        for (it = fHideOnGUI.begin(); it != fHideOnGUI.end(); it++) {
+            (*it).second = state;
+        }
+    }
+
+    
 private:
     
     UIWindow*                       fWindow;
@@ -1248,6 +1256,7 @@ private:
     bool                            fNextBoxIsHideOnGUI;
     
     // Layout management
+    
     
     uiBox* getActiveBox()
     {

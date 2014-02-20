@@ -965,6 +965,12 @@ T findCorrespondingUiItem(FIResponder* sender)
     // Locked box is the currently zoomed in box. At launch time, this box is the main box
     _lockedBox = interface->getMainBox();
     */
+    
+    
+    /*
+    interface->setHidden(state);
+    [self updateGui];
+    */
      
 }
 
