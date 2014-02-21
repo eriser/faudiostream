@@ -57,7 +57,7 @@
     _sampleRateLabel.text = [NSString stringWithFormat:@"%i Hz", _sampleRate];
     
     _bufferSizeSlider.value = [self bufferSizeToSliderValue:_bufferSize];
-    _bufferSizeLabel.text = [NSString stringWithFormat:@"%i", _bufferSize];
+    _bufferSizeLabel.text = [NSString stringWithFormat:@"%i frames", _bufferSize];
     
     [_openWidgetPanelSwitch setOn:_openWidgetPanel animated:NO];
     [_concertUISwitch setOn:_concertUI animated:NO];
@@ -141,7 +141,7 @@
 - (IBAction)bufferSizeSliderMoved:(id)sender
 {
     _bufferSize = [self sliderValueToBufferSize:(int)floor(((UISlider*)sender).value)];
-    _bufferSizeLabel.text = [NSString stringWithFormat:@"%i", _bufferSize];
+    _bufferSizeLabel.text = [NSString stringWithFormat:@"%i frames", _bufferSize];
 }
 
 - (IBAction)openWidgetPanelSwitchMoved:(id)sender
