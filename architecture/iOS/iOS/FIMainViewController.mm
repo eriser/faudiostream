@@ -76,9 +76,6 @@ static void jack_shutdown_callback(const char* message, void* arg)
 
 - (void)viewDidLoad
 {
-    int tmp1 = 0;
-    int tmp2 = 0;
-    
     // General UI initializations
     _widgetPreferencesView.hidden = YES;
     _viewLoaded = NO;
@@ -92,7 +89,7 @@ static void jack_shutdown_callback(const char* message, void* arg)
     DSP.metadata(&metadata);
     
     // Read parameters values
-    const char* home = getenv ("HOME");
+    const char* home = getenv("HOME");
     if (home == 0) {
         home = ".";
     }
@@ -106,20 +103,11 @@ static void jack_shutdown_callback(const char* message, void* arg)
     interface = new CocoaUI([UIApplication sharedApplication].keyWindow, self, &metadata);
     finterface = new FUI();
     
-    // Read audio user preferences
+    // Read user preferences
     sampleRate = [[NSUserDefaults standardUserDefaults] integerForKey:@"sampleRate"];
-    if (sampleRate == 0) sampleRate = 44100;
-    
     bufferSize = [[NSUserDefaults standardUserDefaults] integerForKey:@"bufferSize"];
-    if (bufferSize == 0) bufferSize = 256;
-    
-    tmp1 = [[NSUserDefaults standardUserDefaults] integerForKey:@"openWidgetPanel"];
-    if (tmp1 == 0) openWidgetPanel = YES;
-    else openWidgetPanel = (BOOL)(tmp1 - 1);
-    
-    tmp2 = [[NSUserDefaults standardUserDefaults] integerForKey:@"concertUI"];
-    if (tmp2 == 0) concertUI = YES;
-    else concertUI = (BOOL)(tmp2 - 1);
+    openWidgetPanel = [[NSUserDefaults standardUserDefaults] boolForKey:@"openWidgetPanel"];
+    concertUI = [[NSUserDefaults standardUserDefaults] boolForKey:@"concertUI"];
     
     [self openAudio];
     [self displayTitle];
@@ -137,7 +125,7 @@ static void jack_shutdown_callback(const char* message, void* arg)
     // Notification when device orientation changed
     [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(orientationChanged:)
-                                                 name:UIDeviceOrientationDidChangeNotification object:nil];
+                                        name:UIDeviceOrientationDidChangeNotification object:nil];
     
     // Abstract layout is the layout computed without regarding screen dimensions. To be displayed, we adapt it to the device and orientition
     interface->saveAbstractLayout();
@@ -262,7 +250,7 @@ error:
     {
         UIAlertView* alertView = [[UIAlertView alloc] initWithTitle:@"Audio error"
                                                             message:errorString delegate:self
-                                                  cancelButtonTitle:@"OK" otherButtonTitles:nil];
+                                                            cancelButtonTitle:@"OK" otherButtonTitles:nil];
         [alertView show];
         [alertView release];
     }

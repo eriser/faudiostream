@@ -44,25 +44,14 @@
 
 - (void)viewDidLoad
 {
-    int tmp1 = 0;
-    int tmp2 = 0;
     [super viewDidLoad];
     
     // Read user preferences
     _sampleRate = [[NSUserDefaults standardUserDefaults] integerForKey:@"sampleRate"];
-    if (_sampleRate == 0) _sampleRate = 44100;
-    
     _bufferSize = [[NSUserDefaults standardUserDefaults] integerForKey:@"bufferSize"];
-    if (_bufferSize == 0) _bufferSize = 256;
+    _openWidgetPanel = [[NSUserDefaults standardUserDefaults] boolForKey:@"openWidgetPanel"];
+    _concertUI = [[NSUserDefaults standardUserDefaults] boolForKey:@"concertUI"];
     
-    tmp1 = [[NSUserDefaults standardUserDefaults] integerForKey:@"openWidgetPanel"];
-    if (tmp1 == 0) _openWidgetPanel = YES;
-    else _openWidgetPanel = (BOOL)(tmp1 - 1);
-    
-    tmp2 = [[NSUserDefaults standardUserDefaults] integerForKey:@"concertUI"];
-    if (tmp2 == 0) _concertUI = YES;
-    else _concertUI = (BOOL)(tmp2 - 1);
-        
     // Update UI
     _sampleRateSlider.value = [self sampleRateToSliderValue:_sampleRate];
     _sampleRateLabel.text = [NSString stringWithFormat:@"%i Hz", _sampleRate];
@@ -125,14 +114,13 @@
 
 - (IBAction)done:(id)sender
 {
-    int tmp1 = (int)(_openWidgetPanel) + 1;
-    int tmp2 = (int)(_concertUI) + 1;
     
     // Write user preferences
     [[NSUserDefaults standardUserDefaults] setInteger:_sampleRate forKey:@"sampleRate"];
     [[NSUserDefaults standardUserDefaults] setInteger:_bufferSize forKey:@"bufferSize"];
-    [[NSUserDefaults standardUserDefaults] setInteger:tmp1 forKey:@"openWidgetPanel"];
-    [[NSUserDefaults standardUserDefaults] setInteger:tmp2 forKey:@"concertUI"];
+    [[NSUserDefaults standardUserDefaults] setBool:_openWidgetPanel forKey:@"openWidgetPanel"];
+    [[NSUserDefaults standardUserDefaults] setBool:_concertUI forKey:@"concertUI"];
+    
 	[[NSUserDefaults standardUserDefaults] synchronize];
         
     // Update preferences

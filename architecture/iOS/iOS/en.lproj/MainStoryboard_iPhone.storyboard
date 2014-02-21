@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="4514" systemVersion="12F45" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" initialViewController="2">
     <dependencies>
+        <deployment defaultVersion="1280" identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="3747"/>
     </dependencies>
     <scenes>
@@ -358,7 +359,7 @@
                                     <action selector="openWidgetPanelSwitchMoved:" destination="6" eventType="valueChanged" id="qim-6k-Qi3"/>
                                 </connections>
                             </switch>
-                            <switch opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" id="mKQ-2N-JFu">
+                            <switch opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" id="mKQ-2N-JFu">
                                 <rect key="frame" x="251" y="300" width="51" height="31"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
                                 <connections>
@@ -389,8 +390,8 @@
                     <connections>
                         <outlet property="_bufferSizeLabel" destination="9wB-mL-QeI" id="8c8-pu-tF8"/>
                         <outlet property="_bufferSizeSlider" destination="gDC-YP-Hzz" id="tGk-M5-y3n"/>
-                        <outlet property="_openWidgetPanelSwitch" destination="0tq-fl-CWV" id="c3B-yb-Vnl"/>
                         <outlet property="_concertUISwitch" destination="mKQ-2N-JFu" id="a3B-tt-Unl"/>
+                        <outlet property="_openWidgetPanelSwitch" destination="0tq-fl-CWV" id="c3B-yb-Vnl"/>
                         <outlet property="_sampleRateLabel" destination="U5Y-mi-YMk" id="mw6-2F-q56"/>
                         <outlet property="_sampleRateSlider" destination="1Y5-CG-5xs" id="wSl-lW-BS3"/>
                         <outlet property="delegate" destination="2" id="15"/>
