@@ -36,7 +36,7 @@
                                 [NSNumber numberWithInteger:44100], @"sampleRate",
                                 [NSNumber numberWithInteger:256], @"bufferSize",
                                 [NSNumber numberWithBool:TRUE], @"openWidgetPanel",
-                                [NSNumber numberWithBool:FALSE], @"concertUI",nil];
+                                [NSNumber numberWithBool:TRUE], @"concertUI",nil];
     
     
     [[NSUserDefaults standardUserDefaults] registerDefaults:appDefaults];

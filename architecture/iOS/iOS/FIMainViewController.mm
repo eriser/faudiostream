@@ -118,7 +118,8 @@ static void jack_shutdown_callback(const char* message, void* arg)
     DSP.buildUserInterface(finterface);
     
     snprintf(rcfilename, 256, "%s/Library/Caches/%s", home, _name);
-    finterface->recallState(rcfilename);
+    // SL : 22/02/14, desativated for the concert
+    //finterface->recallState(rcfilename);
     
     [self updateGui];
     
@@ -569,7 +570,8 @@ T findCorrespondingUiItem(FIResponder* sender)
 - (void)saveGui
 {
     if (finterface) {
-        finterface->saveState(rcfilename);
+        // SL : 22/02/14, decativated for the concert
+        //finterface->saveState(rcfilename);
     }
 }
 
@@ -577,7 +579,8 @@ T findCorrespondingUiItem(FIResponder* sender)
 - (void)loadGui
 {
     if (finterface) {
-        finterface->recallState(rcfilename);
+        // SL : 22/02/14, desativated for the concert
+        //finterface->recallState(rcfilename);
     }
 }
 
@@ -966,7 +969,8 @@ T findCorrespondingUiItem(FIResponder* sender)
 
 - (void)restartAudioWithBufferSize:(int)bufferSize sampleRate:(int)sampleRate
 {
-    finterface->saveState(rcfilename);
+    // SL : 22/02/14, desativated for the concert
+    //finterface->saveState(rcfilename);
     
     if (dynamic_cast<iosaudio*>(audio_device)) {
         
@@ -978,7 +982,8 @@ T findCorrespondingUiItem(FIResponder* sender)
         DSP.init(long(sampleRate));
     }
    
-    finterface->recallState(rcfilename);
+    // SL : 22/02/14, desativated for the concert
+    //finterface->recallState(rcfilename);
 }
 
 

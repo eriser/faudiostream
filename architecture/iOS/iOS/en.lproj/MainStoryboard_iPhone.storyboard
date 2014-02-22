@@ -359,7 +359,7 @@
                                     <action selector="openWidgetPanelSwitchMoved:" destination="6" eventType="valueChanged" id="qim-6k-Qi3"/>
                                 </connections>
                             </switch>
-                            <switch opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" id="mKQ-2N-JFu">
+                            <switch opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" id="mKQ-2N-JFu">
                                 <rect key="frame" x="251" y="300" width="51" height="31"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
                                 <connections>
@@ -368,13 +368,6 @@
                             </switch>
                             <label opaque="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="left" text="on long press" lineBreakMode="tailTruncation" minimumFontSize="10" id="MCl-8J-e1e">
                                 <rect key="frame" x="20" y="264" width="184" height="21"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
-                                <color key="textColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
-                                <nil key="highlightedColor"/>
-                            </label>
-                            <label opaque="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="left" text="(quit and restart to be effective)" lineBreakMode="tailTruncation" minimumFontSize="10" id="C2T-e7-gDt">
-                                <rect key="frame" x="20" y="323" width="202" height="21"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                 <color key="textColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
