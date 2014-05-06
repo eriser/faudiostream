@@ -1,5 +1,5 @@
-#ifndef SIGTOGRAPH_HH
-#define SIGTOGRAPH_HH
+#ifndef SIGTOVHDL_HH
+#define SIGTOVHDL_HH
 
 #include "signals.hh"
 #include <string>
@@ -9,9 +9,8 @@
 using namespace std;
 
 /**
- * Draw a list of signals L as a directed graph using
- * graphviz's dot language
+ * Produce synthtizable VHDL using the flopoco framework
  */
-void sigToGraph (Tree sig, ofstream& fout);
+void sigToVHDL (Tree sig, ofstream& fout);
 
-#endif // SIGTOGRAPH_HH
+#endif // SIGTOVHDL_HH

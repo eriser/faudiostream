@@ -34,7 +34,7 @@
 #include "sigtyperules.hh"
 #include "xtended.hh"
 
-#include "sigToGraph.hh"
+#include "sigToVHDL.hh"
 
 using namespace std;
 
@@ -45,9 +45,9 @@ static string   sigLabel(Tree sig);
 
 
 /**
- * Draw a list of signals as a directed graph using graphviz's dot language
+ * Produce synthtizable VHDL using the flopoco framework
  */
-void sigToGraph (Tree L, ofstream& fout)
+void sigToVHDL (Tree L, ofstream& fout)
 {
     set<Tree>   alreadyDrawn;
 
