@@ -114,6 +114,7 @@ bool			gVersionSwitch 	= false;
 bool            gDetailsSwitch  = false;
 bool            gTimingSwitch   = false;
 bool            gDrawSignals    = false;
+bool            gVHDL			= false; //VHDL generation
 bool            gShadowBlur     = false;	// note: svg2pdf doesn't like the blur filter
 bool            gGraphSwitch 	= false;
 bool            gDrawPSSwitch 	= false;
@@ -234,6 +235,10 @@ bool process_cmdline(int argc, char* argv[])
 
         } else if (isCmd(argv[i], "-sg", "--signal-graph")) {
             gDrawSignals = true;
+            i += 1;
+
+        } else if (isCmd(argv[i], "-vhdl", "--vhdl")) { //VHDL generation
+            gVHDL = true;
             i += 1;
 
         } else if (isCmd(argv[i], "-blur", "--shadow-blur")) {
@@ -450,6 +455,7 @@ void printhelp()
 	cout << "-d \t\tprint compilation --details\n";
     cout << "-tg \t\tprint the internal --task-graph in dot format file\n";
     cout << "-sg \t\tprint the internal --signal-graph in dot format file\n";
+    cout << "-vhdl \t\tprint vhdl --vhdl in a vhdl file\n"; //VHDL generation
     cout << "-ps \t\tprint block-diagram --postscript file\n";
     cout << "-svg \t\tprint block-diagram --svg file\n";
     cout << "-mdoc \t\tprint --mathdoc of a Faust program in LaTeX format in a -mdoc directory\n";
