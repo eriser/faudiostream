@@ -249,14 +249,43 @@ void TiPhoneCoreAudioRenderer::InterruptionListener(void *inClientData, UInt32 i
     }
 }
 
+// see : https://github.com/khopkins218/WXJM-Mobile/blob/master/build/iphone/Classes/TiMediaAudioSession.m
+
 int TiPhoneCoreAudioRenderer::SetupMixing()
 {
     CFStringRef route;
     UInt32 routesize = sizeof(route);
-    OSStatus err  = AudioSessionGetProperty(kAudioSessionProperty_AudioRoute, &routesize, &route);
-    if (err == noErr) {
-        if (CFStringCompare(route, CFSTR("ReceiverAndMicrophone"), 0) == kCFCompareEqualTo || CFStringCompare(route,CFSTR("Receiver"), 0) == kCFCompareEqualTo) {
+    OSStatus err;
+    if (AudioSessionGetProperty(kAudioSessionProperty_AudioRoute, &routesize, &route) == noErr) {
+        if (CFStringCompare(route, CFSTR("Speaker"), 0) == kCFCompareEqualTo) {
+            printf("Speaker\n");
+            NSLog(@"Speaker");
+        } else if (CFStringCompare(route, CFSTR("Headphone"), 0) == kCFCompareEqualTo) {
+            printf("Headphone\n");
+            NSLog(@"Headphone");
+        } else if (CFStringCompare(route, CFSTR("MicrophoneBuiltIn"), 0) == kCFCompareEqualTo) {
+            printf("MicrophoneBuiltIn\n");
+            NSLog(@"MicrophoneBuiltIn");
+        } else if (CFStringCompare(route, CFSTR("HeadsetInOut"), 0) == kCFCompareEqualTo) {
+            printf("HeadsetInOut\n");
+             NSLog(@"HeadsetInOut");
+        } else if (CFStringCompare(route, CFSTR("LineOut"), 0) == kCFCompareEqualTo) {
+            printf("LineOut\n");
+            NSLog(@"LineOut");
+        } else if (CFStringCompare(route, CFSTR("HeadphonesAndMicrophone"), 0) == kCFCompareEqualTo) {
+            printf("HeadphonesAndMicrophone\n");
+            NSLog(@"HeadphonesAndMicrophone");
+        } else if (CFStringCompare(route, CFSTR("ReceiverAndMicrophone"), 0) == kCFCompareEqualTo) {
             // Re-route audio to the speaker (not the receiver, which no music app will ever want)
+            printf("ReceiverAndMicrophone\n");
+            NSLog(@"ReceiverAndMicrophone");
+            printf("Rerouting audio to speaker\n");
+            UInt32 newRoute = kAudioSessionOverrideAudioRoute_Speaker;
+            AudioSessionSetProperty(kAudioSessionProperty_OverrideAudioRoute, sizeof(newRoute), &newRoute);
+        } else if (CFStringCompare(route, CFSTR("Receiver"), 0) == kCFCompareEqualTo) {
+            // Re-route audio to the speaker (not the receiver, which no music app will ever want)
+            printf("Receiver\n");
+            NSLog(@"Receiver");
             printf("Rerouting audio to speaker\n");
             UInt32 newRoute = kAudioSessionOverrideAudioRoute_Speaker;
             AudioSessionSetProperty(kAudioSessionProperty_OverrideAudioRoute, sizeof(newRoute), &newRoute);
@@ -319,8 +348,7 @@ int TiPhoneCoreAudioRenderer::SetParameters(int bufferSize, int samplerate)
     AudioSessionAddPropertyListener(kAudioSessionProperty_ServerDied, AudioSessionPropertyListener, this);
     
     UInt32 audioCategory;
-    if ((fDevNumInChans > 0) && (fDevNumOutChans > 0))
-    {
+    if ((fDevNumInChans > 0) && (fDevNumOutChans > 0)) {
         audioCategory = kAudioSessionCategory_PlayAndRecord;
         printf("kAudioSessionCategory_PlayAndRecord\n");
     } else if (fDevNumInChans > 0) {
