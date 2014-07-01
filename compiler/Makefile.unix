@@ -1,4 +1,4 @@
-subprojects := boxes errors evaluate generator normalize parser propagate parallelize signals tlib draw draw/device draw/schema extended patternmatcher documentator utils
+subprojects := boxes errors evaluate generator normalize parser propagate parallelize signals tlib draw draw/device draw/schema extended patternmatcher documentator utils draw/flopoco
 
 sources = $(wildcard *.cpp) $(wildcard */*.cpp) $(wildcard draw/*/*.cpp)
 
@@ -15,14 +15,16 @@ else
 ARCHFLAGS 	:= 
 endif
 
-CXXFLAGS ?= -O1 -g -Wall -Wuninitialized 
+CXXFLAGS ?= -O1 -g -Wall -Wuninitialized
 ##CXXFLAGS ?= -O3 -Wall -Wuninitialized $(ARCHFLAGS)
 CXXFLAGS += -Wno-parentheses $(addprefix -I, $(subprojects)) -DINSTALL_PREFIX='"$(prefix)"'
+
+LIBS = libFloPoCoLib.a -lmpfr -lgmp -lgmpxx
 
 all : faust
 
 faust : $(objects)
-	$(CXX) $(CXXFLAGS) $(objects) -o faust
+	$(CXX) $(CXXFLAGS) $(objects) $(LIBS) -o faust ##using flopoco lib version
 
 
 .PHONY: clean depend ctags parser
@@ -124,6 +126,14 @@ draw/sigToGraph.o: tlib/shlysis.hh signals/binop.hh signals/sigtype.hh tlib/smar
 draw/sigToGraph.o: signals/sigtyperules.hh extended/xtended.hh generator/klass.hh generator/uitree.hh tlib/property.hh
 draw/sigToGraph.o: parallelize/loop.hh parallelize/graphSorting.hh signals/sigvisitor.hh documentator/lateq.hh
 draw/sigToGraph.o: draw/sigToGraph.hh
+
+draw/sigToVHDL.o: draw/flopoco/FloPoCo.hpp 
+draw/sigToVHDL.o: signals/signals.hh tlib/tlib.hh tlib/symbol.hh tlib/node.hh tlib/tree.hh tlib/num.hh tlib/list.hh
+draw/sigToVHDL.o: tlib/shlysis.hh signals/binop.hh signals/sigtype.hh tlib/smartpointer.hh signals/interval.hh
+draw/sigToVHDL.o: signals/sigtyperules.hh extended/xtended.hh generator/klass.hh generator/uitree.hh tlib/property.hh
+draw/sigToVHDL.o: parallelize/loop.hh parallelize/graphSorting.hh signals/sigvisitor.hh documentator/lateq.hh
+draw/sigToVHDL.o: draw/sigToVHDL.hh
+
 errors/errormsg.o: errors/errormsg.hh tlib/tlib.hh tlib/symbol.hh tlib/node.hh tlib/tree.hh tlib/num.hh tlib/list.hh
 errors/errormsg.o: tlib/shlysis.hh boxes/boxes.hh signals/signals.hh signals/binop.hh boxes/ppbox.hh
 errors/timing.o: tlib/compatibility.hh errors/timing.hh
