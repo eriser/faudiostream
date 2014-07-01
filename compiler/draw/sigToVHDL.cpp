@@ -19,8 +19,8 @@
  ************************************************************************
  ************************************************************************/
 
-#define VHDL_DEBUG_
-#ifdef VHDL_DEBUG_0
+#define VHDL_DEBUG 1
+#ifdef VHDL_DEBUG
 #define DDEFAULT 0
 #define DL1 "1"
 #define DL2 "2"
@@ -31,10 +31,11 @@
 #define debug(...)                                    \
 	do{                                               \
 		std::string p[] = { __VA_ARGS__ };            \
+		int dLevel=DDEFAULT;                          \
 		if (sizeof(p)/sizeof(p[0])==2)                \
-			cout<<"	DEBUG"<<p[1]<<":"<<p[0]<<endl;    \
-		else                                          \
-			cout<<"	DEBUG"<<DDEFAULT<<":"<<p[0]<<endl;\
+			dLevel=std::strtol(p[1].c_str(),0,10);		      \
+		if (dLevel <= VHDL_DEBUG)					  \
+		cout<<"	DEBUG"<<dLevel<<":"<<p[0]<<endl;	  \
 	} while(0)
 #else
 #define debug(...)
