@@ -19,7 +19,7 @@
  ************************************************************************
  ************************************************************************/
 
-#define VHDL_DEBUG 1
+#define VHDL_DEBUG 5
 #ifdef VHDL_DEBUG
 #define DDEFAULT 0
 #define DL1 "1"
@@ -44,12 +44,10 @@
 
 #include <stdio.h>
 
-#include <set>
-#include <map>
-#include <vector>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <stdint.h>
 
 #include "signals.hh"
 #include "sigtype.hh"
@@ -58,22 +56,17 @@
 
 #include "sigToVHDL.hh"
 
-#include "flopoco/FloPoCo.hpp"
 
 using namespace std;
 using namespace flopoco;
 
-static void     recdraw(Tree sig, set<Tree>& drawn, ofstream& fout );
+static void     recdraw(Tree sig, set<Tree>& drawn, list<Tree> *recoveryPoints, bool isGettingReco=true, queue < pair<Tree,Tree > > *nFq=NULL, map<Tree, int> *lvs=NULL, map<Tree, list<Tree> > *nFs=NULL );
 //static string   nodeattr(Type t);
 //static string   edgeattr(Type t);
-static char		sigLabel(Tree sig, Operator *&op);
+static string		sigLabel(Tree sig);
 
-//replaces sigBase by sigSubst in the connection map.
-static void		rpSig (void *sigBase, void *sigSubst);
-
-static Target * target = new Virtex6();
-static map<void*, Operator*> vhdlOps;
-static multimap<void*,void*> connectMap;
+static void getRecPts(Tree sig, set<Tree>& drawn, list<Tree> *recoveryPoints);
+static void prepareOps(Tree sig, set<Tree>& drawn, list<Tree> *recoveryPoints, map<Tree,int> *levels, map<Tree, list<Tree> > *nFs);
 
 /**
  * Produce synthtizable VHDL using the flopoco framework
@@ -89,79 +82,33 @@ void sigToVHDL (Tree L, ofstream& fout)
 	//op->outputVHDLToFile(fout);
 	//op2->outputVHDLToFile(fout);
 	//delete op;
-    set<Tree>   alreadyDrawn;
+//    set<Tree>   alreadyDrawn;
 
     //fout << "strict digraph loopgraph {\n"
     //     << "    rankdir=LR; node [fontsize=10];"
     //     << endl;
     //int out = 0;
-		debug("constructing dataflow");
-    while (isList(L)) {
-        recdraw(hd(L), alreadyDrawn, fout);
+//		debug("constructing dataflow",DL1);
+//    while (isList(L)) {
+        //recdraw(hd(L), alreadyDrawn, fout, isGettingReco, nodeFathers, levels);
 
     //    fout << "OUTPUT_" << out << "[color=\"red2\" style=\"filled\" fillcolor=\"pink\"];" << endl;
     //    fout << 'S' << hd(L) << " -> " << "OUTPUT_" << out++ << "[" << edgeattr(getCertifiedSigType(hd(L))) << "];" << endl;
 		//ending output.
-        L = tl(L);
-    }
-
-	//output vhdl TODO: refactor, set a loop
-	map<void*, Operator*>::iterator i,j;
-	multimap<void*, void*>::iterator nextCo;
-	map<string,Signal*> opSig, subOpSig;
-	map<string,Signal*>::iterator sOp, sSub;
-	Operator *opToDraw;
-
-	for ( i=vhdlOps.begin(); i!=vhdlOps.end(); i++ )
-	{
-		debug("output vhdl for flopoco operator");
-		opToDraw=i->second;
-		opToDraw->outputVHDLToFile(fout);
-		opSig=opToDraw->getSignalMap();
-		
-		debug("attempting to wire connections");
-		nextCo=connectMap.begin();
-		for
-			(nextCo=connectMap.find(i->first);nextCo!=connectMap.end();nextCo=connectMap.find(i->first))
-		{
-			//wiring section TODO: refactor
-			debug("getting connection", SPE);
-			j=vhdlOps.find((*nextCo).second);
-				if (j!=vhdlOps.end())
-				{
-				subOpSig=vhdlOps[(*nextCo).second]->getSignalMap();
-			debug("got connection", SPE);
-				//initiating double iterator research
-				sSub=subOpSig.begin();
-				for ( sOp = opSig.begin(); sOp != opSig.end(); sOp++){
-					
-			debug("testing connection", SPE);
-					if ( sOp->second->type()==Signal::out )
-						fout << sOp->first << "=>" << sSub->first
-							<<endl;
-			debug("wrote connection... ...Or not...", SPE);
-					sSub++;
-				}
-		}
-		else{}
-			connectMap.erase(nextCo);
-		debug("Erased current connection", SPE);
-		//end of wiring section
-		}
-
-
-	}
-
-
-	debug("deleting objects.");
-
-
-	for ( i=vhdlOps.begin(); i!=vhdlOps.end(); i++ )
-	{
-		delete i->second;
-	}
+//        L = tl(L);
+//    }
 
    // fout << "}" << endl;
+    set<Tree>   alreadyDrawn;
+	list<Tree> *recoveryPoints=new list<Tree>();
+	map<Tree,int> *lvls=new map<Tree, int>();
+	map<Tree ,list<Tree> > *nodeFathers = new map<Tree, list<Tree> >();
+	getRecPts(L, alreadyDrawn, recoveryPoints );
+	prepareOps(L, alreadyDrawn, recoveryPoints, lvls, nodeFathers);
+
+	
+
+
 }
 
 
@@ -171,37 +118,20 @@ void sigToVHDL (Tree L, ofstream& fout)
 /**
  * Draw recursively a signal
  */
-static void recdraw(Tree sig, set<Tree>& drawn, ofstream& fout )
+static void recdraw(Tree sig, set<Tree>& drawn, list<Tree> *recoveryPoints, bool isGettingReco, queue< pair <Tree, Tree > > *nFq, map<Tree,int> *lvs, map<Tree, list<Tree> > *nFs )
 {
     //cerr << ++TABBER << "ENTER REC DRAW OF " << sig << "$" << *sig << endl;
     vector<Tree>    subsig;
     int             n;
-	Operator* opFound;
-	char isOp;
-	stringstream opName;
 
     if (drawn.count(sig) == 0) {
         drawn.insert(sig);
         if (isList(sig)) {
             do {
-                recdraw(hd(sig), drawn, fout);
+                recdraw(hd(sig), drawn, recoveryPoints, isGettingReco, nFq, lvs, nFs);
                 sig = tl(sig);
             } while (isList(sig));
         } else {
-
-			debug("trying to get sigLabel", DL1);
-			isOp=sigLabel(sig, opFound); //FIXME: rename this
-
-			//changing name
-			if (isOp)
-			{
-				opName << 'S' << sig; 
-				opFound->changeName(opName.str());
-
-				debug("inserting in vhdlOps", DL1);
-				//recording op
-				vhdlOps[sig]=opFound;
-			}
 
             // draw the node
      //       fout    << 'S' << sig << "[label=\"" << sigLabel(sig) << "\""
@@ -209,7 +139,6 @@ static void recdraw(Tree sig, set<Tree>& drawn, ofstream& fout )
      //               << endl;
 
             // draw the subsignals
-			debug("getting subsignals", DL1);
             n = getSubSignals(sig, subsig);
             if (n > 0) {
                 if (n==1 && isList(subsig[0])) {
@@ -217,9 +146,14 @@ static void recdraw(Tree sig, set<Tree>& drawn, ofstream& fout )
                     assert(isRec(sig,id,body));
 					if (!isRec(sig,id,body)) {
 					}
+
                     // special recursion case, recreate a vector of subsignals instead of the
                     // list provided by getSubSignal
+					else
+						recoveryPoints->push_back(sig);
+
                     Tree L = subsig[0];
+
                     subsig.clear();
                     n = 0;
                     do {
@@ -229,30 +163,53 @@ static void recdraw(Tree sig, set<Tree>& drawn, ofstream& fout )
                     } while (isList(L));
                 }
 
-			debug("generating connections", DL1);
-				//TODO:two loops: one for recdraw and one for connection.
                 for (int i=0; i<n; i++) {
-                    recdraw(subsig[i], drawn, fout);
-					
-					if ( isOp ){
-						connectMap.insert(std::pair<void*, void*>(sig,subsig[i]));
+					if (isGettingReco)
+						recdraw(subsig[i], drawn, recoveryPoints, isGettingReco, nFq, lvs, nFs);
+					else{
+						nFq->push(pair<Tree, Tree>(subsig[i],sig));
+						(*nFs)[subsig[i]].remove(sig); //if already exists, remove it and place it to front.
+						(*nFs)[subsig[i]].push_front(sig);
+
+						(*lvs)[sig]=(*lvs)[(*nFs)[sig].front()]+1; //record level of processed node as just higher than its father.
+						recdraw(subsig[i], drawn, recoveryPoints, isGettingReco, nFq, lvs, nFs);
 					}
-					else {
-						rpSig(sig, subsig[i]);
-					}
 
-
-
-					//portmap();
-
-     //               fout    << 'S' << subsig[i] << " -> " << 'S' << sig
-     //                       << "[" << edgeattr(getCertifiedSigType(subsig[i])) << "];"
-     //                       << endl;
+//                    fout    << 'S' << subsig[i] << " -> " << 'S' << sig
+//                            << "[" << edgeattr(getCertifiedSigType(subsig[i])) << "];"
+//                            << endl;
                 }
-            }
-        }
-    }
+
+			}
+		}
+	}
+}
     //cerr << --TABBER << "EXIT REC DRAW OF " << sig << endl;
+
+
+static void getRecPts(Tree sig, set<Tree>& drawn, list<Tree> *recoveryPoints)
+{
+    set<Tree>   alreadyDrawn;
+
+		debug("getting recovery points",DL1);
+    while (isList(sig)) {
+        recdraw(hd(sig), alreadyDrawn, recoveryPoints);
+
+        sig = tl(sig);
+    }
+}
+static void prepareOps( Tree sig, set<Tree>& drawn, list<Tree> *recoveryPoints, map<Tree,int> *levels, map<Tree, list<Tree> > *nFs )
+{
+    set<Tree> alreadyDrawn;
+	queue < pair <Tree, Tree> > *nFq = new queue< pair<Tree,Tree> >();
+	map<Tree, int> *lvs = new map<Tree, int>();
+
+	debug("getting recovery points",DL1);
+    while (isList(sig)) {
+
+        recdraw(hd(sig), alreadyDrawn,  recoveryPoints, false, nFq, lvs, nFs);
+        sig = tl(sig);
+	}
 }
 
 
@@ -312,132 +269,74 @@ static const char* binopname[]= {
 /**
  * return the label of a signal as a string
  */
-static char sigLabel(Tree sig, Operator *&op)
+static string sigLabel(Tree sig)
 {
-	char opf=0;
-    int         i, wE=8, wF=24;
+    int         i;
     double      r;
     Tree        x, y, z, c, type, name, file, ff, largs, id, le, sel, var, label;
-	
+
     xtended*    p = (xtended*) getUserData(sig);
 
     stringstream fout;
 
-         if (p)                                     { cout << p->name() <<" found."<<endl; }
-    else if ( isSigInt(sig, &i) )                   { cout << i << " found."<<endl;	}
-    else if ( isSigReal(sig, &r) )                  { cout << r << " found." <<endl;	}
-    else if ( isSigWaveform(sig))                   { cout << "waveform" << " found." <<endl;  }
+         if (p)                                     { fout << p->name(); }
+    else if ( isSigInt(sig, &i) )                   { fout << i;	}
+    else if ( isSigReal(sig, &r) )                  { fout << r;	}
+    else if ( isSigWaveform(sig))                   { fout << "waveform";  }
 
-    else if ( isSigInput(sig, &i) )                 { cout << "INPUT_" << i << " found."<<endl; }
-    else if ( isSigOutput(sig, &i, x) )             { cout << "OUTPUT_" << i<< " found."<<endl; }
+    else if ( isSigInput(sig, &i) )                 { fout << "INPUT_" << i; }
+    else if ( isSigOutput(sig, &i, x) )             { fout << "OUTPUT_" << i; }
 
-    else if ( isSigDelay1(sig, x) )                 { cout << "mem" << " found." <<endl;		}
-    else if ( isSigFixDelay(sig, x, y) )            { cout << "@" << " found."<<endl;          }
-    else if ( isSigPrefix(sig, x, y) )              { cout << "prefix"<<" found."<< endl;		}
-    else if ( isSigIota(sig, x) )                   { cout << "iota"<<" found.";       }
-    else if ( isSigBinOp(sig, &i, x, y) )           { //fout << binopname[i]; }
-		switch (i) {
-			case 0: op = new FPAddSinglePath( target, wE, wF );
-					opf=1;
-					cout << "FPAddSinglePath found." << endl;
-				break;
-			case 1: op = new FPAddSinglePath ( target, wE, wF, true);
-					cout << "FPSubSinglePath found." << endl;
-					opf=1;
-				break;
-//			case 2:
-//				break;
-//			case 3:
-//				break;
-//			case 4:
-//				break;
-//			case 5:
-//				break;
-//			case 6:
-//				break;
-//			case 7:
-//				break;
-//			case 8:
-//				break;
-//			case 10:
-//				break;
-//			case 11:
-//				break;
-//			case 12:
-//				break;
-//			case 13:
-//				break;
-//			case 14:
-//				break;
-//			case 15:
-//				break;
-//			case 16:
-//				break;
-			default : cerr << "WARNING: " << binopname[i] << ":operation not supported yet. Operator will be skipped." << endl;
-														}
+    else if ( isSigDelay1(sig, x) )                 { fout << "mem";		}
+    else if ( isSigFixDelay(sig, x, y) )            { fout << "@";          }
+    else if ( isSigPrefix(sig, x, y) )              { fout << "prefix";		}
+    else if ( isSigIota(sig, x) )                   { fout << "iota";       }
+    else if ( isSigBinOp(sig, &i, x, y) )           { fout << binopname[i]; }
+    else if ( isSigFFun(sig, ff, largs) )			{ fout << "ffunction:" << *ff; }
+    else if ( isSigFConst(sig, type, name, file) )  { fout << *name; }
+    else if ( isSigFVar(sig, type, name, file) )    { fout << *name; }
 
-													}
-    else if ( isSigFFun(sig, ff, largs) )			{ cout << "ffunction:" << *ff << " found." <<endl; }
-    else if ( isSigFConst(sig, type, name, file) )  { cout << *name << " found." <<endl; }
-    else if ( isSigFVar(sig, type, name, file) )    { cout << *name << " found." << endl; }
-
-    else if ( isSigTable(sig, id, x, y) ) 			{ cout << "table:" << id << " found." <<endl;	}
-    else if ( isSigWRTbl(sig, id, x, y, z) )		{ cout << "write:" << id << " found." <<endl;	}
-    else if ( isSigRDTbl(sig, x, y) ) 				{ cout << "read" << " found " << endl;	}
+    else if ( isSigTable(sig, id, x, y) ) 			{ fout << "table:" << id;	}
+    else if ( isSigWRTbl(sig, id, x, y, z) )		{ fout << "write:" << id;	}
+    else if ( isSigRDTbl(sig, x, y) ) 				{ fout << "read";	}
 
 
 
-    else if ( isSigSelect2(sig, sel, x, y) ) 		{ cout << "select2" << " found." << endl; }
-    else if ( isSigSelect3(sig, sel, x, y, z) ) 	{ cout << "select3" << " found." <<endl; }
+    else if ( isSigSelect2(sig, sel, x, y) ) 		{ fout << "select2"; }
+    else if ( isSigSelect3(sig, sel, x, y, z) ) 	{ fout << "select3"; }
 
-    else if ( isSigGen(sig, x) ) 					{ cout << "generator" << " found."<<endl; }
+    else if ( isSigGen(sig, x) ) 					{ fout << "generator"; }
 
-    else if ( isProj(sig, &i, x) )                  { cout << "Proj" << i <<" found."<<endl;	}
-    else if ( isRec(sig, var, le) )                 { cout << "REC " << *var << " found." <<endl; }
+    else if ( isProj(sig, &i, x) )                  { fout << "Proj" << i;	}
+    else if ( isRec(sig, var, le) )                 { fout << "REC " << *var; }
 
-    else if ( isSigIntCast(sig, x) ) 				{ cout << "int" <<" found."<<endl; }
-    else if ( isSigFloatCast(sig, x) ) 				{ cout << "float"<< " found" <<endl; }
+    else if ( isSigIntCast(sig, x) ) 				{ fout << "int"; }
+    else if ( isSigFloatCast(sig, x) ) 				{ fout << "float"; }
 #if 0
-    else if ( isSigButton(sig, label) ) 			{ cout << "button \"" << *label << '"'; }
-    else if ( isSigCheckbox(sig, label) ) 			{ cout << "checkbox \"" << *label << '"'; }
-    else if ( isSigVSlider(sig, label,c,x,y,z) )	{ cout << "vslider \"" << *label << '"';  }
-    else if ( isSigHSlider(sig, label,c,x,y,z) )	{ cout << "hslider \"" << *label << '"';  }
-    else if ( isSigNumEntry(sig, label,c,x,y,z) )	{ cout << "nentry \"" << *label << '"';  }
+    else if ( isSigButton(sig, label) ) 			{ fout << "button \"" << *label << '"'; }
+    else if ( isSigCheckbox(sig, label) ) 			{ fout << "checkbox \"" << *label << '"'; }
+    else if ( isSigVSlider(sig, label,c,x,y,z) )	{ fout << "vslider \"" << *label << '"';  }
+    else if ( isSigHSlider(sig, label,c,x,y,z) )	{ fout << "hslider \"" << *label << '"';  }
+    else if ( isSigNumEntry(sig, label,c,x,y,z) )	{ fout << "nentry \"" << *label << '"';  }
 
-    else if ( isSigVBargraph(sig, label,x,y,z) )	{ cout << "vbargraph \"" << *label << '"'; 	}
-    else if ( isSigHBargraph(sig, label,x,y,z) )	{ cout << "hbargraph \"" << *label << '"'; 	}
+    else if ( isSigVBargraph(sig, label,x,y,z) )	{ fout << "vbargraph \"" << *label << '"'; 	}
+    else if ( isSigHBargraph(sig, label,x,y,z) )	{ fout << "hbargraph \"" << *label << '"'; 	}
 #else
-    else if ( isSigButton(sig, label) ) 			{ cout << "button" << " found."<<endl; }
-    else if ( isSigCheckbox(sig, label) ) 			{ cout << "checkbox" << "found."<<endl; }
-    else if ( isSigVSlider(sig, label,c,x,y,z) )	{ cout << "vslider" << "found."<<endl;}
-    else if ( isSigHSlider(sig, label,c,x,y,z) )	{ cout << "hslider"  << "found."<<endl;}
-    else if ( isSigNumEntry(sig, label,c,x,y,z) )	{ cout << "nentry"  << "found."<<endl; }
+    else if ( isSigButton(sig, label) ) 			{ fout << "button"; }
+    else if ( isSigCheckbox(sig, label) ) 			{ fout << "checkbox"; }
+    else if ( isSigVSlider(sig, label,c,x,y,z) )	{ fout << "vslider";  }
+    else if ( isSigHSlider(sig, label,c,x,y,z) )	{ fout << "hslider";  }
+    else if ( isSigNumEntry(sig, label,c,x,y,z) )	{ fout << "nentry";  }
 
-    else if ( isSigVBargraph(sig, label,x,y,z) )	{ cout << "vbargraph"  << "found."<<endl;	}
-    else if ( isSigHBargraph(sig, label,x,y,z) )	{ cout << "hbargraph"  << "found."<<endl;	}
+    else if ( isSigVBargraph(sig, label,x,y,z) )	{ fout << "vbargraph"; 	}
+    else if ( isSigHBargraph(sig, label,x,y,z) )	{ fout << "hbargraph"; 	}
 #endif
-    else if ( isSigAttach(sig, x, y) )              { cout << "attach"	 << "found."<<endl;	}
+    else if ( isSigAttach(sig, x, y) )              { fout << "attach";		}
 
     else {
         cerr << "ERROR, unrecognized signal : " << *sig << endl;
         exit(1);
     }
 
-    return opf;
-}
-
-static void	rpSig (void *sigBase, void *sigSubst)
-{
-	multimap<void*, void*>::iterator i;
-	for (i=connectMap.begin();i!=connectMap.end();i++)
-	{
-			debug("entering rpSig",DL2);
-		if (i->second==sigBase)
-		{	
-			connectMap.insert(std::pair<void*,void*>(i->first, sigSubst));
-			connectMap.erase(i);
-			break;
-		}
-	}
-			debug("exiting rpSig",DL2);
+    return fout.str();
 }
