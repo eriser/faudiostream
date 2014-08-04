@@ -180,9 +180,32 @@ void sigToVHDL (Tree L, ofstream& fout)
 	}
 	//Tree totest=(*ppls)[1];
 	//debug(sigLabel(totest), DL5);
-	debug("finished");
 
 #endif
+	//output levels
+	fout<<"Levels:"<<endl;
+	for ( int i=0; i<ppls->size(); i++ )
+	{
+			fout<<i<<":";
+		for ( list<Tree>::iterator debIt=(*ppls)[i].begin(); debIt!=(*ppls)[i].end(); debIt++)
+		{
+			fout<<"S"<<*debIt<<","<<sigLabel(*debIt)<<";";
+		}
+		fout<<endl;
+	}
+	//output node/father relations
+	fout<<"\nConnections:"<<endl;
+	for (map<Tree,list<Tree> >::iterator it=nodeFathers->begin(); it!=nodeFathers->end(); it++){
+		if(it->second.size()!=0){
+			fout <<"S"<<it->first <<":";
+			for (list<Tree>::iterator i=it->second.begin();i!=it->second.end();i++)
+			{
+				fout << "S" <<*i<<";";
+			}
+			fout<<endl;
+		}
+	}
+	debug("finished");
 
 	
 
