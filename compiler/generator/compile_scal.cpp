@@ -143,7 +143,7 @@ endTiming("ScalarCompiler::prepare");
     }
 #ifdef VHDL
     if (gVHDL) {
-        ofstream dotfile(subst("$0.vhdl", makeDrawPath()).c_str());
+        ofstream dotfile(subst("$0.flop", makeDrawPath()).c_str());
         sigToVHDL(L3, dotfile);
     }
 #endif
