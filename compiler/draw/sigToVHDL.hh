@@ -28,7 +28,7 @@ namespace flopoco
 	class FlopOp: public Operator 
 	{
 		public:
-		FlopOp(Target *t, Tree sig, ofstream& fout, map<Tree, int> *ppLs, map<Tree, list<Tree> > *cx, map<string, double> inputDelays = emptyDelayMap);
+		FlopOp(Target *t, Tree sig, ofstream& fout, const map<Tree, int> *ppLs, const map<Tree, list<Tree> > *nodeFathers, map<string, double> inputDelays = emptyDelayMap);
 		~FlopOp();
 	};
 

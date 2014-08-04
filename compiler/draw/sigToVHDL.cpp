@@ -19,21 +19,21 @@
  ************************************************************************
  ************************************************************************/
 
-#define VHDL_DEBUG 5
+#define VHDL_DEBUG 4
 #ifdef VHDL_DEBUG
 #define DDEFAULT 0
+#define DL0 "0"
 #define DL1 "1"
 #define DL2 "2"
 #define DL3 "3"
 #define DL4 "4"
 #define DL5 "5"
-#define SPE ":SPECIAL"
 #define debug(...)                                    \
 	do{                                               \
 		std::string p[] = { __VA_ARGS__ };            \
 		int dLevel=DDEFAULT;                          \
-		if (sizeof(p)/sizeof(p[0])==2)                \
-			dLevel=std::strtol(p[1].c_str(),0,10);		      \
+		if (sizeof(p)/sizeof(p[0])==2)               \
+			dLevel=std::strtol(p[1].c_str(),0,10);    \
 		if (dLevel <= VHDL_DEBUG)					  \
 		cout<<"	DEBUG"<<dLevel<<":"<<p[0]<<endl;	  \
 	} while(0)
@@ -106,6 +106,86 @@ void sigToVHDL (Tree L, ofstream& fout)
 	getRecPts(L, alreadyDrawn, recoveryPoints );
 	prepareOps(L, alreadyDrawn, recoveryPoints, lvls, nodeFathers);
 
+#if (VHDL_DEBUG==4)
+
+	cout << "recovery points:" <<endl;
+	for (list<Tree>::iterator it=recoveryPoints->begin(); it!=recoveryPoints->end(); it++){
+		cout << sigLabel(*it) <<endl;
+	}
+	cout << "\nlevels:" <<endl;
+	for (map<Tree,int>::iterator it=lvls->begin(); it!=lvls->end(); it++){
+		cout << sigLabel(it->first) << ":"<<it->second<<endl;
+		//cout << (it->first) << ":"<<it->second<<endl;
+	}
+	cout << "\nid | node | fathers:" <<endl;
+	for (map<Tree,list<Tree> >::iterator it=nodeFathers->begin(); it!=nodeFathers->end(); it++){
+		cout <<sigLabel(it->first) <<endl;
+		//cout <<it->first <<endl;
+		for (list<Tree>::iterator i=it->second.begin();i!=it->second.end();i++)
+		{
+			//cout << "	" <<*i<< endl;
+			cout << "	" <<sigLabel(*i)<<endl;
+		}
+	}
+
+
+#endif
+	//find the max level (pipeline depth)
+	int max_level=0;
+	for (map<Tree,int>::iterator maxFind = lvls->begin(); maxFind!=lvls->end();maxFind++){
+		if (maxFind->second > max_level)
+			max_level=maxFind->second;
+	}
+
+	//refactor to a list of nodes by level
+	vector< list<Tree> > *ppls = new vector< list<Tree> >(max_level+1);
+	map<Tree, int>::iterator refactorIt;
+	for (refactorIt=lvls->begin(); refactorIt!=lvls->end(); ++refactorIt)
+	{
+		(*ppls)[refactorIt->second].push_back(refactorIt->first);
+	}
+	//rewriting missing proj at the appropriate level
+	for (refactorIt=lvls->begin(); refactorIt!=lvls->end(); ++refactorIt)
+	{
+		//if a node is Proj, it might have many fathers but the hardware operation will
+		//be reading in a memory so it's level is less than the highest (highest number) level and must be duplicated.
+		int i;
+		Tree t;
+		if (isProj( refactorIt->first, &i, t ) ){ //if is proj
+			vector<bool> isSaved(max_level+1); //know if we already put the proj on the lower levels
+			//search all fathers in the levels
+			for (list<Tree>::iterator father=(*nodeFathers)[refactorIt->first].begin();father!=(*nodeFathers)[refactorIt->first].end();father++){
+				//if the level was not recorded. Keep in mind that it has already been recorded comming from the
+				//nearest father, that is at level -1 from the current proj.
+				if( ((*lvls)[*father]<(*lvls)[refactorIt->first]-1) && (!isSaved[refactorIt->second]) ){
+					(*ppls)[(*lvls)[*father]+1].push_back(refactorIt->first);//record the proj.
+					isSaved[refactorIt->second]=true; //update levels status.
+				}
+			}
+		}
+	}
+
+#if (VHDL_DEBUG==4)
+
+
+	//TODO: debug: delete this
+	for ( int i=0; i<ppls->size(); i++ )
+	{
+			cout<<"level"<<i<<":";
+		for ( list<Tree>::iterator debIt=(*ppls)[i].begin(); debIt!=(*ppls)[i].end(); debIt++)
+		{
+			cout<<sigLabel(*debIt)<<";";
+		}
+		cout<<endl;
+	}
+	//Tree totest=(*ppls)[1];
+	//debug(sigLabel(totest), DL5);
+	debug("finished");
+
+#endif
+
+	
+
 	
 
 
@@ -163,24 +243,37 @@ static void recdraw(Tree sig, set<Tree>& drawn, list<Tree> *recoveryPoints, bool
                     } while (isList(L));
                 }
 
-                for (int i=0; i<n; i++) {
-					if (isGettingReco)
+
+			}//FIXME:here
+				if (isGettingReco){
+					for (int i=0; i<n; i++) {
 						recdraw(subsig[i], drawn, recoveryPoints, isGettingReco, nFq, lvs, nFs);
-					else{
+					}}
+				else{
+					
+					int i;
+					Tree x;
+					if (isProj(sig, &i, x)){
+						debug("Proj found",DL4);
+						drawn.erase(sig);
+					}
+
+					if ( ( lvs->find(sig)==lvs->end() ) || !( (*lvs)[sig]==0 ) ){
+						(*lvs)[sig]=((*lvs)[(*nFs)[sig].front()]+1); //record level of processed node as just higher than its father.
+						}
+					for (int i=0; i<n; i++) {
 						nFq->push(pair<Tree, Tree>(subsig[i],sig));
 						(*nFs)[subsig[i]].remove(sig); //if already exists, remove it and place it to front.
 						(*nFs)[subsig[i]].push_front(sig);
 
-						(*lvs)[sig]=(*lvs)[(*nFs)[sig].front()]+1; //record level of processed node as just higher than its father.
 						recdraw(subsig[i], drawn, recoveryPoints, isGettingReco, nFq, lvs, nFs);
 					}
+					
 
 //                    fout    << 'S' << subsig[i] << " -> " << 'S' << sig
 //                            << "[" << edgeattr(getCertifiedSigType(subsig[i])) << "];"
 //                            << endl;
                 }
-
-			}
 		}
 	}
 }
@@ -202,12 +295,15 @@ static void prepareOps( Tree sig, set<Tree>& drawn, list<Tree> *recoveryPoints, 
 {
     set<Tree> alreadyDrawn;
 	queue < pair <Tree, Tree> > *nFq = new queue< pair<Tree,Tree> >();
-	map<Tree, int> *lvs = new map<Tree, int>();
+	//map<Tree, int> *lvs = new map<Tree, int>();
 
 	debug("getting recovery points",DL1);
     while (isList(sig)) {
+		(*levels)[hd(sig)]=0;
 
-        recdraw(hd(sig), alreadyDrawn,  recoveryPoints, false, nFq, lvs, nFs);
+		(*nFs)[hd(sig)]=list<Tree>(NULL);
+		(*nFq).push(std::pair<Tree,Tree>(hd(sig),NULL));
+        recdraw(hd(sig), alreadyDrawn,  recoveryPoints, false, nFq, levels, nFs);
         sig = tl(sig);
 	}
 }
@@ -337,6 +433,5 @@ static string sigLabel(Tree sig)
         cerr << "ERROR, unrecognized signal : " << *sig << endl;
         exit(1);
     }
-
     return fout.str();
 }
