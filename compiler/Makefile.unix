@@ -1,6 +1,6 @@
-subprojects := boxes errors evaluate generator normalize parser propagate parallelize signals tlib draw draw/device draw/schema extended patternmatcher documentator utils draw/flopoco
+subprojects := boxes errors evaluate generator normalize parser propagate parallelize signals tlib draw vhdl draw/device draw/schema extended patternmatcher documentator utils vhdl/flopoco
 
-sources = $(wildcard *.cpp) $(wildcard */*.cpp) $(wildcard draw/*/*.cpp)
+sources = $(wildcard *.cpp) $(wildcard */*.cpp) $(wildcard draw/*/*.cpp) $(wildcard vhdl/*/*.cpp)
 
 objects = $(sources:.cpp=.o)
 
@@ -127,12 +127,12 @@ draw/sigToGraph.o: signals/sigtyperules.hh extended/xtended.hh generator/klass.h
 draw/sigToGraph.o: parallelize/loop.hh parallelize/graphSorting.hh signals/sigvisitor.hh documentator/lateq.hh
 draw/sigToGraph.o: draw/sigToGraph.hh
 
-draw/sigToVHDL.o: draw/flopoco/FloPoCo.hpp 
-draw/sigToVHDL.o: signals/signals.hh tlib/tlib.hh tlib/symbol.hh tlib/node.hh tlib/tree.hh tlib/num.hh tlib/list.hh
-draw/sigToVHDL.o: tlib/shlysis.hh signals/binop.hh signals/sigtype.hh tlib/smartpointer.hh signals/interval.hh
-draw/sigToVHDL.o: signals/sigtyperules.hh extended/xtended.hh generator/klass.hh generator/uitree.hh tlib/property.hh
-draw/sigToVHDL.o: parallelize/loop.hh parallelize/graphSorting.hh signals/sigvisitor.hh documentator/lateq.hh
-draw/sigToVHDL.o: draw/sigToVHDL.hh
+vhdl/sigToVHDL.o: vhdl/flopoco/FloPoCo.hpp 
+vhdl/sigToVHDL.o: signals/signals.hh tlib/tlib.hh tlib/symbol.hh tlib/node.hh tlib/tree.hh tlib/num.hh tlib/list.hh
+vhdl/sigToVHDL.o: tlib/shlysis.hh signals/binop.hh signals/sigtype.hh tlib/smartpointer.hh signals/interval.hh
+vhdl/sigToVHDL.o: signals/sigtyperules.hh extended/xtended.hh generator/klass.hh generator/uitree.hh tlib/property.hh
+vhdl/sigToVHDL.o: parallelize/loop.hh parallelize/graphSorting.hh signals/sigvisitor.hh documentator/lateq.hh
+vhdl/sigToVHDL.o: vhdl/sigToVHDL.hh
 
 errors/errormsg.o: errors/errormsg.hh tlib/tlib.hh tlib/symbol.hh tlib/node.hh tlib/tree.hh tlib/num.hh tlib/list.hh
 errors/errormsg.o: tlib/shlysis.hh boxes/boxes.hh signals/signals.hh signals/binop.hh boxes/ppbox.hh
