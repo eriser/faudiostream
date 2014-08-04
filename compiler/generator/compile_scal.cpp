@@ -50,13 +50,18 @@
 #include "compatibility.hh"
 #include "ppsig.hh"
 #include "sigToGraph.hh"
+
+#ifdef VHDL
 #include "sigToVHDL.hh"
+#endif
 
 using namespace std;
 
 extern bool     gInPlace;
 extern bool     gDrawSignals;
+#ifdef VHDL
 extern bool     gVHDL;
+#endif
 extern bool     gLessTempSwitch;
 extern int      gMaxCopyDelay;
 extern string   gClassName;
@@ -136,10 +141,12 @@ endTiming("ScalarCompiler::prepare");
         ofstream dotfile(subst("$0-sig.dot", makeDrawPath()).c_str());
         sigToGraph(L3, dotfile);
     }
+#ifdef VHDL
     if (gVHDL) {
         ofstream dotfile(subst("$0.vhdl", makeDrawPath()).c_str());
         sigToVHDL(L3, dotfile);
     }
+#endif
   	return L3;
 }
 
