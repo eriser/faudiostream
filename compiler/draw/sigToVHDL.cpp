@@ -19,7 +19,7 @@
  ************************************************************************
  ************************************************************************/
 
-#define VHDL_DEBUG 4
+#define VHDL_DEBUG 
 #ifdef VHDL_DEBUG
 #define DDEFAULT 0
 #define DL0 "0"
@@ -103,33 +103,13 @@ void sigToVHDL (Tree L, ofstream& fout)
 	list<Tree> *recoveryPoints=new list<Tree>();
 	map<Tree,int> *lvls=new map<Tree, int>();
 	map<Tree ,list<Tree> > *nodeFathers = new map<Tree, list<Tree> >();
+	
+	//getting recovery points
 	getRecPts(L, alreadyDrawn, recoveryPoints );
+
+	//getting levels and node-father connections
 	prepareOps(L, alreadyDrawn, recoveryPoints, lvls, nodeFathers);
 
-#if (VHDL_DEBUG==4)
-
-	cout << "recovery points:" <<endl;
-	for (list<Tree>::iterator it=recoveryPoints->begin(); it!=recoveryPoints->end(); it++){
-		cout << sigLabel(*it) <<endl;
-	}
-	cout << "\nlevels:" <<endl;
-	for (map<Tree,int>::iterator it=lvls->begin(); it!=lvls->end(); it++){
-		cout << sigLabel(it->first) << ":"<<it->second<<endl;
-		//cout << (it->first) << ":"<<it->second<<endl;
-	}
-	cout << "\nid | node | fathers:" <<endl;
-	for (map<Tree,list<Tree> >::iterator it=nodeFathers->begin(); it!=nodeFathers->end(); it++){
-		cout <<sigLabel(it->first) <<endl;
-		//cout <<it->first <<endl;
-		for (list<Tree>::iterator i=it->second.begin();i!=it->second.end();i++)
-		{
-			//cout << "	" <<*i<< endl;
-			cout << "	" <<sigLabel(*i)<<endl;
-		}
-	}
-
-
-#endif
 	//find the max level (pipeline depth)
 	int max_level=0;
 	for (map<Tree,int>::iterator maxFind = lvls->begin(); maxFind!=lvls->end();maxFind++){
@@ -165,23 +145,6 @@ void sigToVHDL (Tree L, ofstream& fout)
 		}
 	}
 
-#if (VHDL_DEBUG==4)
-
-
-	//TODO: debug: delete this
-	for ( int i=0; i<ppls->size(); i++ )
-	{
-			cout<<"level"<<i<<":";
-		for ( list<Tree>::iterator debIt=(*ppls)[i].begin(); debIt!=(*ppls)[i].end(); debIt++)
-		{
-			cout<<sigLabel(*debIt)<<";";
-		}
-		cout<<endl;
-	}
-	//Tree totest=(*ppls)[1];
-	//debug(sigLabel(totest), DL5);
-
-#endif
 	//output levels
 	fout<<"Levels:"<<endl;
 	for ( int i=0; i<ppls->size(); i++ )
@@ -193,6 +156,7 @@ void sigToVHDL (Tree L, ofstream& fout)
 		}
 		fout<<endl;
 	}
+
 	//output node/father relations
 	fout<<"\nConnections:"<<endl;
 	for (map<Tree,list<Tree> >::iterator it=nodeFathers->begin(); it!=nodeFathers->end(); it++){
@@ -206,11 +170,6 @@ void sigToVHDL (Tree L, ofstream& fout)
 		}
 	}
 	debug("finished");
-
-	
-
-	
-
 
 }
 
