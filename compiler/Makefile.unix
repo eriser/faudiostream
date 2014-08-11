@@ -23,12 +23,11 @@ ifdef VHDL
 CXXFLAGS += -DVHDL
 endif
 
-LIBS = libFloPoCoLib.a -lmpfr -lgmp -lgmpxx
 
 all : faust
 
 faust : $(objects)
-	$(CXX) $(CXXFLAGS) $(objects) $(LIBS) -o faust ##using flopoco lib version
+	$(CXX) $(CXXFLAGS) $(objects) -o faust ##using flopoco lib version
 
 
 .PHONY: clean depend ctags parser
@@ -133,7 +132,6 @@ draw/sigToGraph.o: draw/sigToGraph.hh
 
 
 ifdef VHDL
-vhdl/sigToVHDL.o: vhdl/flopoco/FloPoCo.hpp 
 vhdl/sigToVHDL.o: signals/signals.hh tlib/tlib.hh tlib/symbol.hh tlib/node.hh tlib/tree.hh tlib/num.hh tlib/list.hh
 vhdl/sigToVHDL.o: tlib/shlysis.hh signals/binop.hh signals/sigtype.hh tlib/smartpointer.hh signals/interval.hh
 vhdl/sigToVHDL.o: signals/sigtyperules.hh extended/xtended.hh generator/klass.hh generator/uitree.hh tlib/property.hh

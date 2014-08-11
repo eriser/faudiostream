@@ -69,11 +69,11 @@ static void getRecPts(Tree sig, list<Tree>& recoveryPoints);
 static void prepareOps(Tree sig, list<Tree>& recoveryPoints, multimap<Tree,int>& levels, map<Tree, list<Tree> >& nFs);
 
 /**
- * Produce synthtizable VHDL using the flopoco framework
+ * Produce instructions to build vhdl pipeline with the flopoco framework
  */
 void sigToVHDL (Tree L, ofstream& fout)
 {
-
+//TODO:delete this
 //	int wE = 9;
 //	int wF = 16;
 	
@@ -199,6 +199,8 @@ static void recFill(Tree sig, set<Tree>& drawn, list<Tree>& recoveryPoints )
             } while (isList(sig));
         } else {
 
+
+			//TODO: delete this
             // draw the node
      //       fout    << 'S' << sig << "[label=\"" << sigLabel(sig) << "\""
      //               << nodeattr(getCertifiedSigType(sig)) << "];"
@@ -236,6 +238,7 @@ static void recFill(Tree sig, set<Tree>& drawn, list<Tree>& recoveryPoints )
 			}
 					
 
+			//TODO: delete this
 //                    fout    << 'S' << subsig[i] << " -> " << 'S' << sig
 //                            << "[" << edgeattr(getCertifiedSigType(subsig[i])) << "];"
 //                            << endl;
@@ -262,11 +265,13 @@ static void getRecPts(Tree sig, list<Tree>& recoveryPoints)
 static void prepareOps( Tree sig, list<Tree>& recoveryPoints, multimap<Tree,int>& t_levels, map<Tree, list<Tree> >& nSs )
 {
     set<Tree> alreadyDrawn;
+			//TODO: delete this
 	//queue < pair <Tree, Tree> > nFq;
 	//map<Tree, int> *lvs = new map<Tree, int>();
 
 	debug("getting recovery points",DL1);
     while (isList(sig)) {
+			//TODO: delete this
 		//t_levels.insert(pair<Tree, int>(hd(sig),0);
 
 		//nFs[hd(sig)]=list<Tree>(NULL);
@@ -299,6 +304,7 @@ static void fillOps(Tree sig, set<Tree>& drawn, int level, multimap<Tree,int>& t
             } while (isList(sig));
         } else {
 
+			//TODO: delete this
             // draw the node
      //       fout    << 'S' << sig << "[label=\"" << sigLabel(sig) << "\""
      //               << nodeattr(getCertifiedSigType(sig)) << "];"
