@@ -58,14 +58,14 @@
 
 using namespace std;
 
-static void     fillOps(Tree sig, set<Tree>& ranked, int level, map<Tree, int>& lvs, map<Tree, vector<Tree> >& nSs );
+static void     fillOps(Tree sig, int level, map<Tree, int>& lvs, map<Tree, vector<Tree> >& nSs );
 //static void     recFill(Tree sig, set<Tree>& drawn, list<Tree>& recoveryPoints );
 //static string   nodeattr(Type t);
 //static string   edgeattr(Type t);
 static string		sigLabel(Tree sig);
 
 //static void getRecPts(Tree sig, list<Tree>& recoveryPoints);
-static void prepareOps(Tree sig, list<Tree>& recoveryPoints, map<Tree,int>& levels, map<Tree, vector<Tree> >& nSs);
+static void prepareOps(Tree sig, map<Tree,int>& levels, map<Tree, vector<Tree> >& nSs);
 
 /**
  * Produce instructions to build vhdl pipeline with the flopoco framework
@@ -100,16 +100,18 @@ void sigToVHDL (Tree L, ofstream& fout)
    // fout << "}" << endl;
     //set<Tree>				 alreadyDrawn;
 
-	list<Tree>				 recoveryPoints; // a collection of recursive nodes for simplify cyclic graphs problems.
+	//list<Tree>				 recoveryPoints; // a collection of recursive nodes for simplify cyclic graphs problems.
 	map<Tree,int>			 lvls; // a collection of nodes with their level
-	map<Tree ,vector<Tree> >   nodeSons; // a collection of links between nodes and their sons
+	map<Tree ,vector<Tree> > nodeSons; // a collection of links between nodes and their sons
 	int						 max_level=0; //max level in the pipeline
+	int						 num; //int for proj testing
+	Tree					 x, t, g; //Tree for proj/rec testing
 	
 	//getting recovery points
 	//getRecPts(L, recoveryPoints);
 
 	//getting levels and node-father connections
-	prepareOps(L, recoveryPoints, lvls, nodeSons);
+	prepareOps(L, lvls, nodeSons);
 
 	//find the max level (pipeline depth)
 	for (map<Tree,int>::iterator maxFind = lvls.begin(); maxFind!=lvls.end();maxFind++){
@@ -155,7 +157,19 @@ void sigToVHDL (Tree L, ofstream& fout)
 			fout<<i<<":";
 		for ( list<Tree>::iterator debIt=ppls[i].begin(); debIt!=ppls[i].end(); debIt++)
 		{
-			fout<<"S"<<*debIt<<","<<sigLabel(*debIt)<<";";
+
+			if (isProj(*debIt,&num,x))
+				fout<<"S"<<*debIt<<",Proj"<<nodeSons[ nodeSons[*debIt][0] ][ num ]<<";"; //we take as identifier the provenance of the signal.
+			//so we nodeSons[*debIt][0] is the first and only son of the proj node, so the rec node.
+			//and we take the num-e son of this rec node.
+			else if (isRec(*debIt, t, g)){
+				for (unsigned int sons=0; sons<nodeSons[*debIt].size(); sons++){
+					fout<<"S"<<*debIt<<"-"<<sons<<",Rec"<<nodeSons[*debIt][sons]<<";";
+				}
+			}
+
+			else
+				fout<<"S"<<*debIt<<","<<sigLabel(*debIt)<<";";
 		}
 		fout<<endl;
 	}
@@ -163,7 +177,12 @@ void sigToVHDL (Tree L, ofstream& fout)
 	//output node/father relations
 	fout<<"\nConnections:"<<endl;
 	for (map<Tree,vector<Tree> >::iterator it=nodeSons.begin(); it!=nodeSons.end(); it++){
-		if(it->second.size()!=0){
+		if (isRec(it->first, t, g)){
+			for (unsigned int sons=0; sons<nodeSons[it->first].size(); sons++){
+				fout<<"S"<<it->first<<"-"<<sons<<":S"<<nodeSons[it->first][sons]<<";"<<endl;
+			}
+		}
+		else if(it->second.size()!=0){
 			fout <<"S"<<it->first <<":";
 			for (vector<Tree>::iterator i=it->second.begin();i!=it->second.end();i++)
 			{
@@ -287,9 +306,9 @@ void sigToVHDL (Tree L, ofstream& fout)
 //}
 
 /**prepares containers for displaying levels and tree father relationships*/
-static void prepareOps( Tree sig, list<Tree>& recoveryPoints, map<Tree,int>& t_levels, map<Tree, vector<Tree> >& nSs )
+static void prepareOps( Tree sig, map<Tree,int>& t_levels, map<Tree, vector<Tree> >& nSs )
 {
-    set<Tree> alreadyRanked;
+    //set<Tree> alreadyRanked;
 			//TODO: delete this
 	//queue < pair <Tree, Tree> > nFq;
 	//map<Tree, int> *lvs = new map<Tree, int>();
@@ -301,7 +320,7 @@ static void prepareOps( Tree sig, list<Tree>& recoveryPoints, map<Tree,int>& t_l
 
 		//nFs[hd(sig)]=list<Tree>(NULL);
 		//nFq.push(pair<Tree,Tree>(hd(sig),NULL));
-        fillOps(hd(sig), alreadyRanked, 0, t_levels, nSs);
+        fillOps(hd(sig), 0, t_levels, nSs);
         sig = tl(sig);
 	}
 }
@@ -320,7 +339,7 @@ static void fillOps(Tree sig, int level, map<Tree,int>& tree_levels, map<Tree, v
 	if ( nSs.find(sig)==nSs.end() ){ //if not found
         if (isList(sig)) {
             do {
-                fillOps(hd(sig), ranked, level, tree_levels, nSs);
+                fillOps(hd(sig), level, tree_levels, nSs);
                 sig = tl(sig);
             } while (isList(sig));
         } else {
@@ -361,7 +380,7 @@ static void fillOps(Tree sig, int level, map<Tree,int>& tree_levels, map<Tree, v
 				nSs[sig]=subsig;
 			for (int i=0; i<n; i++) {
 
-				fillOps(subsig[i], ranked, level+1, tree_levels, nSs);
+				fillOps(subsig[i], level+1, tree_levels, nSs);
 				
 			}
 					
