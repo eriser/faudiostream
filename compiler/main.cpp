@@ -463,7 +463,7 @@ void printhelp()
     cout << "-tg \t\tprint the internal --task-graph in dot format file\n";
     cout << "-sg \t\tprint the internal --signal-graph in dot format file\n";
 #ifdef VHDL
-    cout << "-vhdl \t\tprint vhdl --vhdl in a vhdl file\n"; //VHDL generation
+    cout << "-vhdl \t\tprint pipeline structure in a flop file, usable by the flopoco framework to build the vhdl equivalent\n"; //VHDL generation
 #endif
     cout << "-ps \t\tprint block-diagram --postscript file\n";
     cout << "-svg \t\tprint block-diagram --svg file\n";
