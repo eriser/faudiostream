@@ -56,17 +56,16 @@
 
 #include "sigToVHDL.hh"
 
-
 using namespace std;
 
-static void     fillOps(Tree sig, set<Tree>& drawn, int level, multimap<Tree, int>& lvs, map<Tree, list<Tree> >& nFs );
-static void     recFill(Tree sig, set<Tree>& drawn, list<Tree>& recoveryPoints );
+static void     fillOps(Tree sig, set<Tree>& ranked, int level, map<Tree, int>& lvs, map<Tree, vector<Tree> >& nSs );
+//static void     recFill(Tree sig, set<Tree>& drawn, list<Tree>& recoveryPoints );
 //static string   nodeattr(Type t);
 //static string   edgeattr(Type t);
 static string		sigLabel(Tree sig);
 
-static void getRecPts(Tree sig, list<Tree>& recoveryPoints);
-static void prepareOps(Tree sig, list<Tree>& recoveryPoints, multimap<Tree,int>& levels, map<Tree, list<Tree> >& nFs);
+//static void getRecPts(Tree sig, list<Tree>& recoveryPoints);
+static void prepareOps(Tree sig, list<Tree>& recoveryPoints, map<Tree,int>& levels, map<Tree, vector<Tree> >& nSs);
 
 /**
  * Produce instructions to build vhdl pipeline with the flopoco framework
@@ -102,18 +101,18 @@ void sigToVHDL (Tree L, ofstream& fout)
     //set<Tree>				 alreadyDrawn;
 
 	list<Tree>				 recoveryPoints; // a collection of recursive nodes for simplify cyclic graphs problems.
-	multimap<Tree,int>			 lvls; // a collection of nodes with their level
-	map<Tree ,list<Tree> >   nodeSons; // a collection of links between nodes and their sons
+	map<Tree,int>			 lvls; // a collection of nodes with their level
+	map<Tree ,vector<Tree> >   nodeSons; // a collection of links between nodes and their sons
 	int						 max_level=0; //max level in the pipeline
 	
 	//getting recovery points
-	getRecPts(L, recoveryPoints);
+	//getRecPts(L, recoveryPoints);
 
 	//getting levels and node-father connections
 	prepareOps(L, recoveryPoints, lvls, nodeSons);
 
 	//find the max level (pipeline depth)
-	for (multimap<Tree,int>::iterator maxFind = lvls.begin(); maxFind!=lvls.end();maxFind++){
+	for (map<Tree,int>::iterator maxFind = lvls.begin(); maxFind!=lvls.end();maxFind++){
 		if (maxFind->second > max_level)
 			max_level=maxFind->second;
 	}
@@ -163,16 +162,42 @@ void sigToVHDL (Tree L, ofstream& fout)
 
 	//output node/father relations
 	fout<<"\nConnections:"<<endl;
-	for (map<Tree,list<Tree> >::iterator it=nodeSons.begin(); it!=nodeSons.end(); it++){
+	for (map<Tree,vector<Tree> >::iterator it=nodeSons.begin(); it!=nodeSons.end(); it++){
 		if(it->second.size()!=0){
 			fout <<"S"<<it->first <<":";
-			for (list<Tree>::iterator i=it->second.begin();i!=it->second.end();i++)
+			for (vector<Tree>::iterator i=it->second.begin();i!=it->second.end();i++)
 			{
 				fout << "S" <<*i<<";";
 			}
 			fout<<endl;
 		}
 	}
+
+#if(VHDL_DEBUG==4)
+	cout<<"Levels:"<<endl;
+	for ( unsigned int i=0; i<ppls.size(); i++ )
+	{
+			cout<<i<<":";
+		for ( list<Tree>::iterator debIt=ppls[i].begin(); debIt!=ppls[i].end(); debIt++)
+		{
+			cout<<sigLabel(*debIt)<<" | ";
+		}
+		cout<<endl;
+	}
+
+	cout<<"\nConnections:"<<endl;
+	for (map<Tree,vector<Tree> >::iterator it=nodeSons.begin(); it!=nodeSons.end(); it++){
+		if(it->second.size()!=0){
+			cout <<sigLabel(it->first) <<" => ";
+			for (vector<Tree>::iterator i=it->second.begin();i!=it->second.end();i++)
+			{
+				cout << sigLabel(*i)<<" | ";
+			}
+			cout<<endl;
+		}
+	}
+#endif
+
 	debug("finished");
 
 }
@@ -184,87 +209,87 @@ void sigToVHDL (Tree L, ofstream& fout)
 /**
  * Draw recursively a signal
  */
-static void recFill(Tree sig, set<Tree>& drawn, list<Tree>& recoveryPoints )
-{
-    //cerr << ++TABBER << "ENTER REC DRAW OF " << sig << "$" << *sig << endl;
-    vector<Tree>    subsig;
-    int             n;
-
-    if (drawn.count(sig) == 0) {
-        drawn.insert(sig);
-        if (isList(sig)) {
-            do {
-                recFill(hd(sig), drawn, recoveryPoints);
-                sig = tl(sig);
-            } while (isList(sig));
-        } else {
-
-
-			//TODO: delete this
-            // draw the node
-     //       fout    << 'S' << sig << "[label=\"" << sigLabel(sig) << "\""
-     //               << nodeattr(getCertifiedSigType(sig)) << "];"
-     //               << endl;
-
-            // draw the subsignals
-            n = getSubSignals(sig, subsig);
-            if (n > 0) {
-                if (n==1 && isList(subsig[0])) {
-					Tree id, body;
-                    assert(isRec(sig,id,body));
-					if (!isRec(sig,id,body)) {
-					}
-
-                    // special recursion case, recreate a vector of subsignals instead of the
-                    // list provided by getSubSignal
-					else
-						recoveryPoints.push_back(sig);
-
-                    Tree L = subsig[0];
-
-                    subsig.clear();
-                    n = 0;
-                    do {
-                        subsig.push_back(hd(L));
-                        L = tl(L);
-                        n += 1;
-                    } while (isList(L));
-                }
-
-
-			}//FIXME:recode in another function
-			for (int i=0; i<n; i++) {
-				recFill(subsig[i], drawn, recoveryPoints);
-			}
-					
-
-			//TODO: delete this
-//                    fout    << 'S' << subsig[i] << " -> " << 'S' << sig
-//                            << "[" << edgeattr(getCertifiedSigType(subsig[i])) << "];"
-//                            << endl;
-		}
-	}
-}
+//static void recFill(Tree sig, set<Tree>& drawn, list<Tree>& recoveryPoints )
+//{
+//    //cerr << ++TABBER << "ENTER REC DRAW OF " << sig << "$" << *sig << endl;
+//    vector<Tree>    subsig;
+//    int             n;
+//
+//    if (drawn.count(sig) == 0) {
+//        drawn.insert(sig);
+//        if (isList(sig)) {
+//            do {
+//                recFill(hd(sig), drawn, recoveryPoints);
+//                sig = tl(sig);
+//            } while (isList(sig));
+//        } else {
+//
+//
+//			//TODO: delete this
+//            // draw the node
+//     //       fout    << 'S' << sig << "[label=\"" << sigLabel(sig) << "\""
+//     //               << nodeattr(getCertifiedSigType(sig)) << "];"
+//     //               << endl;
+//
+//            // draw the subsignals
+//            n = getSubSignals(sig, subsig);
+//            if (n > 0) {
+//                if (n==1 && isList(subsig[0])) {
+//					Tree id, body;
+//                    assert(isRec(sig,id,body));
+//					if (!isRec(sig,id,body)) {
+//					}
+//
+//                    // special recursion case, recreate a vector of subsignals instead of the
+//                    // list provided by getSubSignal
+//					else
+//						recoveryPoints.push_back(sig);
+//
+//                    Tree L = subsig[0];
+//
+//                    subsig.clear();
+//                    n = 0;
+//                    do {
+//                        subsig.push_back(hd(L));
+//                        L = tl(L);
+//                        n += 1;
+//                    } while (isList(L));
+//                }
+//
+//
+//			}//FIXME:recode in another function
+//			for (int i=0; i<n; i++) {
+//				recFill(subsig[i], drawn, recoveryPoints);
+//			}
+//					
+//
+//			//TODO: delete this
+////                    fout    << 'S' << subsig[i] << " -> " << 'S' << sig
+////                            << "[" << edgeattr(getCertifiedSigType(subsig[i])) << "];"
+////                            << endl;
+//		}
+//	}
+//}
     //cerr << --TABBER << "EXIT REC DRAW OF " << sig << endl;
 
 
 /**get recovery points*/
-static void getRecPts(Tree sig, list<Tree>& recoveryPoints)
-{
-    set<Tree>   alreadyDrawn;
-
-		debug("getting recovery points",DL1);
-    while (isList(sig)) {
-        recFill(hd(sig), alreadyDrawn, recoveryPoints);
-
-        sig = tl(sig);
-    }
-}
+//static void getRecPts(Tree sig, list<Tree>& recoveryPoints)
+//{
+//    set<Tree>   alreadyDrawn;
+//
+//		debug("getting recovery points",DL1);
+//    while (isList(sig)) {
+//        recFill(hd(sig), alreadyDrawn, recoveryPoints);
+//
+//        sig = tl(sig);
+//    }
+//}
 
 /**prepares containers for displaying levels and tree father relationships*/
-static void prepareOps( Tree sig, list<Tree>& recoveryPoints, multimap<Tree,int>& t_levels, map<Tree, list<Tree> >& nSs )
+static void prepareOps( Tree sig, list<Tree>& recoveryPoints, map<Tree,int>& t_levels, map<Tree, vector<Tree> >& nSs )
 {
-    set<Tree> alreadyDrawn;
+    set<Tree> alreadyRanked;
 			//TODO: delete this
 	//queue < pair <Tree, Tree> > nFq;
 	//map<Tree, int> *lvs = new map<Tree, int>();
@@ -276,30 +301,26 @@ static void prepareOps( Tree sig, list<Tree>& recoveryPoints, multimap<Tree,int>
 
 		//nFs[hd(sig)]=list<Tree>(NULL);
 		//nFq.push(pair<Tree,Tree>(hd(sig),NULL));
-        fillOps(hd(sig), alreadyDrawn, 0, t_levels, nSs);
+        fillOps(hd(sig), alreadyRanked, 0, t_levels, nSs);
         sig = tl(sig);
-	}
-	for (list<Tree>::iterator recBrowse=recoveryPoints.begin(); recBrowse!=recoveryPoints.end(); recBrowse++)
-	{
-		fillOps(*recBrowse, alreadyDrawn, 0, t_levels, nSs);
 	}
 }
 
 /** fills levels and fathers links recursively*/
-static void fillOps(Tree sig, set<Tree>& drawn, int level, multimap<Tree,int>& tree_levels, map<Tree, list<Tree> >& nSs )
+static void fillOps(Tree sig, int level, map<Tree,int>& tree_levels, map<Tree, vector<Tree> >& nSs )
 {
     //cerr << ++TABBER << "ENTER REC DRAW OF " << sig << "$" << *sig << endl;
     vector<Tree>    subsig;
     int             n;
 
 	Tree trash, garbage;
-	if ( isRec(sig,trash,garbage) && level!=0 ){} //if rec, and not Tree start, return
-	
-	else if (drawn.count(sig) == 0) {
-        drawn.insert(sig);
+	if ( isRec(sig,trash,garbage) ) //if is rec, reset the level
+		level=0;
+
+	if ( nSs.find(sig)==nSs.end() ){ //if not found
         if (isList(sig)) {
             do {
-                fillOps(hd(sig), drawn, level, tree_levels, nSs);
+                fillOps(hd(sig), ranked, level, tree_levels, nSs);
                 sig = tl(sig);
             } while (isList(sig));
         } else {
@@ -335,55 +356,30 @@ static void fillOps(Tree sig, set<Tree>& drawn, int level, multimap<Tree,int>& t
 
 
 			}//FIXME:recode in another function
-					
-			int i;
-			Tree x;
-			if (isProj(sig, &i, x)){
-				//if the node is a proj, we will have to display it at every level it appears, because it is a reading operation,
-				//performed at several places in the pipeline;
-				debug("Proj found",DL4);
-				drawn.erase(sig);// resetting node
-				
-				
-				//searching if already in the collection
-				bool lfound=false;
-				if ( tree_levels.find(sig)!=tree_levels.end() ){
-					//getting all the occurences of the node
-					pair< multimap<Tree, int>::iterator, multimap<Tree, int>:: iterator > sigLevels;
-					sigLevels = tree_levels.equal_range(sig);
-					
-					//searching if the node is already recorded in this level
-					for (multimap<Tree, int>::iterator fLvl=sigLevels.first; fLvl!=sigLevels.second; fLvl++ )
-					{
-						if ( fLvl->second==level )
-							lfound=true;//if yes, do nothing, next step is recording it's sons.
-					}
 
-				}
-				//else record it at current level
-				if (!lfound)
-					tree_levels.insert(pair<Tree, int>(sig, level));
-			}
-
-			else if ( ( tree_levels.find(sig)==tree_levels.end() ) || !( tree_levels.find(sig)->second<level ) ){
-				tree_levels.erase(sig); //if already exists, remove and replace
-				tree_levels.insert(pair<Tree, int>(sig, level));
-				}
 			//push parent relationship
+				nSs[sig]=subsig;
 			for (int i=0; i<n; i++) {
-				nSs[sig].push_front(subsig[i]);
 
-				fillOps(subsig[i], drawn, level+1, tree_levels, nSs);
+				fillOps(subsig[i], ranked, level+1, tree_levels, nSs);
 				
 			}
 					
 
+			//TODO:delete this
 //                    fout    << 'S' << subsig[i] << " -> " << 'S' << sig
 //                            << "[" << edgeattr(getCertifiedSigType(subsig[i])) << "];"
 //                            << endl;
                 
 		}
 	}
+
+
+
+	if ( (tree_levels.find(sig)==tree_levels.end() ) || ( tree_levels.find(sig)->second<level ) ){
+		tree_levels.erase(sig); //if already exists, and/or level is lower remove and replace with higher level.
+		tree_levels.insert(pair<Tree, int>(sig, level));
+		}
 }
     //cerr << --TABBER << "EXIT REC DRAW OF " << sig << endl;
 
