@@ -59,12 +59,8 @@
 using namespace std;
 
 static void     fillOps(Tree sig, int level, map<Tree, int>& lvs, map<Tree, vector<Tree> >& nSs );
-//static void     recFill(Tree sig, set<Tree>& drawn, list<Tree>& recoveryPoints );
-//static string   nodeattr(Type t);
-//static string   edgeattr(Type t);
 static string		sigLabel(Tree sig);
 
-//static void getRecPts(Tree sig, list<Tree>& recoveryPoints);
 static void prepareOps(Tree sig, map<Tree,int>& levels, map<Tree, vector<Tree> >& nSs);
 
 /**
@@ -72,44 +68,12 @@ static void prepareOps(Tree sig, map<Tree,int>& levels, map<Tree, vector<Tree> >
  */
 void sigToVHDL (Tree L, ofstream& fout)
 {
-//TODO:delete this
-//	int wE = 9;
-//	int wF = 16;
-	
-	//Operator* op = new IntAdder(target, wF);
-	//Operator* op2 = new IntConstMult(target, wF, wE);
-	//op->outputVHDLToFile(fout);
-	//op2->outputVHDLToFile(fout);
-	//delete op;
-//    set<Tree>   alreadyDrawn;
-
-    //fout << "strict digraph loopgraph {\n"
-    //     << "    rankdir=LR; node [fontsize=10];"
-    //     << endl;
-    //int out = 0;
-//		debug("constructing dataflow",DL1);
-//    while (isList(L)) {
-        //recdraw(hd(L), alreadyDrawn, fout, isGettingReco, nodeSons, levels);
-
-    //    fout << "OUTPUT_" << out << "[color=\"red2\" style=\"filled\" fillcolor=\"pink\"];" << endl;
-    //    fout << 'S' << hd(L) << " -> " << "OUTPUT_" << out++ << "[" << edgeattr(getCertifiedSigType(hd(L))) << "];" << endl;
-		//ending output.
-//        L = tl(L);
-//    }
-
-   // fout << "}" << endl;
-    //set<Tree>				 alreadyDrawn;
-
-	//list<Tree>				 recoveryPoints; // a collection of recursive nodes for simplify cyclic graphs problems.
 	map<Tree,int>			 lvls; // a collection of nodes with their level
 	map<Tree ,vector<Tree> > nodeSons; // a collection of links between nodes and their sons
 	int						 max_level=0; //max level in the pipeline
 	int						 num; //int for proj testing
 	Tree					 x, t, g; //Tree for proj/rec testing
 	
-	//getting recovery points
-	//getRecPts(L, recoveryPoints);
-
 	//getting levels and node-father connections
 	prepareOps(L, lvls, nodeSons);
 
@@ -126,29 +90,6 @@ void sigToVHDL (Tree L, ofstream& fout)
 	{
 		ppls[refactorIt->second].push_back(refactorIt->first);
 	}
-	//TODO: delete following
-//	//rewriting missing proj at the appropriate level
-//	for (refactorIt=lvls.begin(); refactorIt!=lvls.end(); refactorIt++)
-//	{
-//		//if a node is Proj, it might have many fathers but the hardware operation will
-//		//be reading in a memory so it's level is less than the highest (highest number) level and must be duplicated.
-//		int i;
-//		Tree t;
-//		if (isProj( refactorIt->first, &i, t ) ){ //if is proj
-//			vector<bool> isSaved(max_level+1); //know if we already put the proj on the lower levels
-//			//search all fathers in the levels
-//			for (list<Tree>::iterator father=nodeSons[refactorIt->first].begin();father!=nodeSons[refactorIt->first].end();father++){
-//				//if the level was not recorded. Keep in mind that it has already been recorded comming from the
-//				//nearest father, that is at level -1 from the current proj.
-//				if( (lvls[*father]<lvls[refactorIt->first]-1) && (!isSaved[refactorIt->second]) ){
-//					ppls[lvls[*father]+1].push_back(refactorIt->first);//record the proj.
-//					isSaved[refactorIt->second]=true; //update levels status.
-//
-//					debug("Proj recorded",DL3);
-//				}
-//			}
-//		}
-//	}
 
 	//output levels
 	fout<<"Levels:"<<endl;
@@ -162,7 +103,8 @@ void sigToVHDL (Tree L, ofstream& fout)
 				fout<<"S"<<*debIt<<",Proj"<<nodeSons[ nodeSons[*debIt][0] ][ num ]<<";"; //we take as identifier the provenance of the signal.
 			//so we nodeSons[*debIt][0] is the first and only son of the proj node, so the rec node.
 			//and we take the num-e son of this rec node.
-			else if (isRec(*debIt, t, g)){
+			else if (isRec(*debIt, t, g)){ //special case for rec. Each son of rec will give birth to a different register.
+				//so we output for each son a different rec node.
 				for (unsigned int sons=0; sons<nodeSons[*debIt].size(); sons++){
 					fout<<"S"<<*debIt<<"-"<<sons<<",Rec"<<nodeSons[*debIt][sons]<<";";
 				}
@@ -192,31 +134,6 @@ void sigToVHDL (Tree L, ofstream& fout)
 		}
 	}
 
-#if(VHDL_DEBUG==4)
-	cout<<"Levels:"<<endl;
-	for ( unsigned int i=0; i<ppls.size(); i++ )
-	{
-			cout<<i<<":";
-		for ( list<Tree>::iterator debIt=ppls[i].begin(); debIt!=ppls[i].end(); debIt++)
-		{
-			cout<<sigLabel(*debIt)<<" | ";
-		}
-		cout<<endl;
-	}
-
-	cout<<"\nConnections:"<<endl;
-	for (map<Tree,vector<Tree> >::iterator it=nodeSons.begin(); it!=nodeSons.end(); it++){
-		if(it->second.size()!=0){
-			cout <<sigLabel(it->first) <<" => ";
-			for (vector<Tree>::iterator i=it->second.begin();i!=it->second.end();i++)
-			{
-				cout << sigLabel(*i)<<" | ";
-			}
-			cout<<endl;
-		}
-	}
-#endif
-
 	debug("finished");
 
 }
@@ -224,102 +141,12 @@ void sigToVHDL (Tree L, ofstream& fout)
 
 /******************************* IMPLEMENTATION ***********************************/
 
-
-/**
- * Draw recursively a signal
- */
-//static void recFill(Tree sig, set<Tree>& drawn, list<Tree>& recoveryPoints )
-//{
-//    //cerr << ++TABBER << "ENTER REC DRAW OF " << sig << "$" << *sig << endl;
-//    vector<Tree>    subsig;
-//    int             n;
-//
-//    if (drawn.count(sig) == 0) {
-//        drawn.insert(sig);
-//        if (isList(sig)) {
-//            do {
-//                recFill(hd(sig), drawn, recoveryPoints);
-//                sig = tl(sig);
-//            } while (isList(sig));
-//        } else {
-//
-//
-//			//TODO: delete this
-//            // draw the node
-//     //       fout    << 'S' << sig << "[label=\"" << sigLabel(sig) << "\""
-//     //               << nodeattr(getCertifiedSigType(sig)) << "];"
-//     //               << endl;
-//
-//            // draw the subsignals
-//            n = getSubSignals(sig, subsig);
-//            if (n > 0) {
-//                if (n==1 && isList(subsig[0])) {
-//					Tree id, body;
-//                    assert(isRec(sig,id,body));
-//					if (!isRec(sig,id,body)) {
-//					}
-//
-//                    // special recursion case, recreate a vector of subsignals instead of the
-//                    // list provided by getSubSignal
-//					else
-//						recoveryPoints.push_back(sig);
-//
-//                    Tree L = subsig[0];
-//
-//                    subsig.clear();
-//                    n = 0;
-//                    do {
-//                        subsig.push_back(hd(L));
-//                        L = tl(L);
-//                        n += 1;
-//                    } while (isList(L));
-//                }
-//
-//
-//			}//FIXME:recode in another function
-//			for (int i=0; i<n; i++) {
-//				recFill(subsig[i], drawn, recoveryPoints);
-//			}
-//					
-//
-//			//TODO: delete this
-////                    fout    << 'S' << subsig[i] << " -> " << 'S' << sig
-////                            << "[" << edgeattr(getCertifiedSigType(subsig[i])) << "];"
-////                            << endl;
-//		}
-//	}
-//}
-    //cerr << --TABBER << "EXIT REC DRAW OF " << sig << endl;
-
-
-/**get recovery points*/
-//static void getRecPts(Tree sig, list<Tree>& recoveryPoints)
-//{
-//    set<Tree>   alreadyDrawn;
-//
-//		debug("getting recovery points",DL1);
-//    while (isList(sig)) {
-//        recFill(hd(sig), alreadyDrawn, recoveryPoints);
-//
-//        sig = tl(sig);
-//    }
-//}
-
 /**prepares containers for displaying levels and tree father relationships*/
 static void prepareOps( Tree sig, map<Tree,int>& t_levels, map<Tree, vector<Tree> >& nSs )
 {
-    //set<Tree> alreadyRanked;
-			//TODO: delete this
-	//queue < pair <Tree, Tree> > nFq;
-	//map<Tree, int> *lvs = new map<Tree, int>();
 
 	debug("getting recovery points",DL1);
     while (isList(sig)) {
-			//TODO: delete this
-		//t_levels.insert(pair<Tree, int>(hd(sig),0);
-
-		//nFs[hd(sig)]=list<Tree>(NULL);
-		//nFq.push(pair<Tree,Tree>(hd(sig),NULL));
         fillOps(hd(sig), 0, t_levels, nSs);
         sig = tl(sig);
 	}
@@ -328,7 +155,6 @@ static void prepareOps( Tree sig, map<Tree,int>& t_levels, map<Tree, vector<Tree
 /** fills levels and fathers links recursively*/
 static void fillOps(Tree sig, int level, map<Tree,int>& tree_levels, map<Tree, vector<Tree> >& nSs )
 {
-    //cerr << ++TABBER << "ENTER REC DRAW OF " << sig << "$" << *sig << endl;
     vector<Tree>    subsig;
     int             n;
 
@@ -343,12 +169,6 @@ static void fillOps(Tree sig, int level, map<Tree,int>& tree_levels, map<Tree, v
                 sig = tl(sig);
             } while (isList(sig));
         } else {
-
-			//TODO: delete this
-            // draw the node
-     //       fout    << 'S' << sig << "[label=\"" << sigLabel(sig) << "\""
-     //               << nodeattr(getCertifiedSigType(sig)) << "];"
-     //               << endl;
 
             // draw the subsignals
             n = getSubSignals(sig, subsig);
@@ -374,7 +194,7 @@ static void fillOps(Tree sig, int level, map<Tree,int>& tree_levels, map<Tree, v
                 }
 
 
-			}//FIXME:recode in another function
+			}
 
 			//push parent relationship
 				nSs[sig]=subsig;
@@ -383,12 +203,6 @@ static void fillOps(Tree sig, int level, map<Tree,int>& tree_levels, map<Tree, v
 				fillOps(subsig[i], level+1, tree_levels, nSs);
 				
 			}
-					
-
-			//TODO:delete this
-//                    fout    << 'S' << subsig[i] << " -> " << 'S' << sig
-//                            << "[" << edgeattr(getCertifiedSigType(subsig[i])) << "];"
-//                            << endl;
                 
 		}
 	}
@@ -400,48 +214,7 @@ static void fillOps(Tree sig, int level, map<Tree,int>& tree_levels, map<Tree, v
 		tree_levels.insert(pair<Tree, int>(sig, level));
 		}
 }
-    //cerr << --TABBER << "EXIT REC DRAW OF " << sig << endl;
 
-/**
- * Convert a signal type into edge attributes
- */
-//static string edgeattr(Type t)
-//{
-//    string s;
-//
-//    // nature
-//    if (t->nature()==kInt) {
-//        s += " color=\"blue\"";
-//    } else {
-//        s += " color=\"red\"";
-//    }
-//
-//    // vectorability
-//    if (t->vectorability()==kVect && t->variability()==kSamp) {
-//        s += " style=\"bold\"";
-//    }
-//    return s;
-//}
-
-
-/**
- * Convert a signal type into node attributes
- */
-//static string nodeattr(Type t)
-//{
-//    string s = edgeattr(t);
-//
-//    // variability
-//    if (t->variability()==kKonst) {
-//        s += " shape=\"box\"";
-//    } else if (t->variability()==kBlock) {
-//        s += " shape=\"hexagon\"";
-//    } else if (t->variability()==kSamp) {
-//        s += " shape=\"ellipse\"";
-//    }
-//
-//    return s;
-//}
 
 
 /**
@@ -453,7 +226,6 @@ static const char* binopname[]= {
         ">", "<", ">=", "<=", "==", "!=",
         "&", "|", "^"
 };
-
 
 /**
  * return the label of a signal as a string
