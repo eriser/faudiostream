@@ -19,7 +19,7 @@
  ************************************************************************
  ************************************************************************/
 
-#define VHDL_DEBUG 4
+#define VHDL_DEBUG 3
 #ifdef VHDL_DEBUG
 #define DDEFAULT 0
 #define DL0 "0"
@@ -58,10 +58,11 @@
 
 using namespace std;
 
-static void     fillOps(Tree sig, int level, map<Tree, int>& lvs, map<Tree, vector<Tree> >& nSs );
-static string		sigLabel(Tree sig);
+static int		getTrueSubSigs(Tree sig, vector<Tree>& subsig);
+static void		prepareOps(Tree sig, map<Tree,int>& levels);
+static void     fillOps(Tree sig, int level, map<Tree, int>& lvs, int delay=0);
+static string	sigLabel(Tree sig);
 
-static void prepareOps(Tree sig, map<Tree,int>& levels, map<Tree, vector<Tree> >& nSs);
 
 /**
  * Produce instructions to build vhdl pipeline with the flopoco framework
@@ -71,27 +72,33 @@ void sigToVHDL (Tree L, ofstream& fout)
 	map<Tree,int>			 lvls; // a collection of nodes with their level
 	map<Tree ,vector<Tree> > nodeSons; // a collection of links between nodes and their sons
 	int						 max_level=0; //max level in the pipeline
-	int						 num; //int for proj testing
+	int						 num,subsig_size; //int for proj testing
 	Tree					 x, t, g; //Tree for proj/rec testing
+	vector<Tree>			 subsig;
 	
 	//getting levels and node-father connections
-	prepareOps(L, lvls, nodeSons);
+	prepareOps(L, lvls);
 
 	//find the max level (pipeline depth)
+	debug("Begining refactoring",DL3);
 	for (map<Tree,int>::iterator maxFind = lvls.begin(); maxFind!=lvls.end();maxFind++){
 		if (maxFind->second > max_level)
 			max_level=maxFind->second;
 	}
+	debug("End of refactoring",DL3);
 
-	//refactor the list of levels by nodes to a list of nodes by level
+	//sort nodes by level
+	debug("Begining sorting",DL3);
 	vector< list<Tree> > ppls(max_level+1);
 	map<Tree, int>::iterator refactorIt;
 	for (refactorIt=lvls.begin(); refactorIt!=lvls.end(); refactorIt++)
 	{
 		ppls[refactorIt->second].push_back(refactorIt->first);
 	}
+	debug("End of sorting",DL3);
 
 	//output levels
+	debug("Output, Levels",DL3);
 	fout<<"Levels:"<<endl;
 	for ( unsigned int i=0; i<ppls.size(); i++ )
 	{
@@ -99,15 +106,13 @@ void sigToVHDL (Tree L, ofstream& fout)
 		for ( list<Tree>::iterator debIt=ppls[i].begin(); debIt!=ppls[i].end(); debIt++)
 		{
 
-			if (isProj(*debIt,&num,x))
-				fout<<"S"<<*debIt<<",Proj"<<nodeSons[ nodeSons[*debIt][0] ][ num ]<<";"; //we take as identifier the provenance of the signal.
-			//so we nodeSons[*debIt][0] is the first and only son of the proj node, so the rec node.
-			//and we take the num-e son of this rec node.
-			else if (isRec(*debIt, t, g)){ //special case for rec. Each son of rec will give birth to a different register.
+			if (isRec(*debIt, t, g)){ //special case for rec. Each son of rec will give birth to a different register.
 				//so we output for each son a different rec node.
-				for (unsigned int sons=0; sons<nodeSons[*debIt].size(); sons++){
-					fout<<"S"<<*debIt<<"-"<<sons<<",Rec"<<nodeSons[*debIt][sons]<<";";
+				getTrueSubSigs(*debIt,subsig);
+				for (unsigned int sons=0; sons<subsig.size(); sons++){
+					fout<<"S"<<*debIt<<"-"<<sons<<",Rec"<<";";
 				}
+				subsig.clear();
 			}
 
 			else
@@ -116,23 +121,32 @@ void sigToVHDL (Tree L, ofstream& fout)
 		fout<<endl;
 	}
 
-	//output node/father relations
+	debug("End of output, Levels",DL3);
+
+	//output node/son relations
+	debug("Output, Connections",DL3);
 	fout<<"\nConnections:"<<endl;
-	for (map<Tree,vector<Tree> >::iterator it=nodeSons.begin(); it!=nodeSons.end(); it++){
-		if (isRec(it->first, t, g)){
-			for (unsigned int sons=0; sons<nodeSons[it->first].size(); sons++){
-				fout<<"S"<<it->first<<"-"<<sons<<":S"<<nodeSons[it->first][sons]<<";"<<endl;
+	for (map<Tree,int >::iterator it=lvls.begin(); it!=lvls.end(); it++){
+		subsig_size=getTrueSubSigs( it->first, subsig );
+		if ( isRec(it->first, t, g) ){
+			for (unsigned int sons=0; sons<subsig.size(); sons++){
+				fout<<"S"<<it->first<<"-"<<sons<<":S"<<subsig[sons]<<";"<<endl;
 			}
 		}
-		else if(it->second.size()!=0){
+		else if ( isProj(it->first, &num, x) ){
+			fout<<"S"<<it->first<<":S"<<subsig[0]<<"-"<<num<<endl;
+		}
+		else if( subsig_size ){
 			fout <<"S"<<it->first <<":";
-			for (vector<Tree>::iterator i=it->second.begin();i!=it->second.end();i++)
+			for (vector<Tree>::iterator i=subsig.begin();i!=subsig.end();i++)
 			{
 				fout << "S" <<*i<<";";
 			}
 			fout<<endl;
 		}
+		subsig.clear();
 	}
+	debug("End of output, Connections",DL3);
 
 	debug("finished");
 
@@ -142,80 +156,115 @@ void sigToVHDL (Tree L, ofstream& fout)
 /******************************* IMPLEMENTATION ***********************************/
 
 /**prepares containers for displaying levels and tree father relationships*/
-static void prepareOps( Tree sig, map<Tree,int>& t_levels, map<Tree, vector<Tree> >& nSs )
+static void prepareOps( Tree sig, map<Tree,int>& t_levels )
 {
-
+    set<Tree>   alreadyDrawn;
 	debug("getting recovery points",DL1);
     while (isList(sig)) {
-        fillOps(hd(sig), 0, t_levels, nSs);
+        fillOps( hd(sig), 0, t_levels );
         sig = tl(sig);
 	}
 }
 
 /** fills levels and fathers links recursively*/
-static void fillOps(Tree sig, int level, map<Tree,int>& tree_levels, map<Tree, vector<Tree> >& nSs )
+static void fillOps( Tree sig, int level, map<Tree,int>& tree_levels, int delay )
 {
     vector<Tree>    subsig;
-    int             n;
+    int             n,atDelay=-1,noi;
+	Tree			atLeft,atRight,x;
 
 	Tree trash, garbage;
-	if ( isRec(sig,trash,garbage) ) //if is rec, reset the level
-		level=0;
+	debug("entering fillOps",DL3);
 
-	if ( nSs.find(sig)==nSs.end() ){ //if not found
-        if (isList(sig)) {
-            do {
-                fillOps(hd(sig), level, tree_levels, nSs);
-                sig = tl(sig);
-            } while (isList(sig));
-        } else {
-
-            // draw the subsignals
-            n = getSubSignals(sig, subsig);
-            if (n > 0) {
-                if (n==1 && isList(subsig[0])) {
-					Tree id, body;
-                    assert(isRec(sig,id,body));
-					if (!isRec(sig,id,body)) {
-					}
-
-                    // special recursion case, recreate a vector of subsignals instead of the
-                    // list provided by getSubSignal
-
-                    Tree L = subsig[0];
-
-                    subsig.clear();
-                    n = 0;
-                    do {
-                        subsig.push_back(hd(L));
-                        L = tl(L);
-                        n += 1;
-                    } while (isList(L));
-                }
-
-
-			}
-
-			//push parent relationship
-				nSs[sig]=subsig;
-			for (int i=0; i<n; i++) {
-
-				fillOps(subsig[i], level+1, tree_levels, nSs);
-				
-			}
-                
-		}
-	}
-
-
+	//if ( drawn.count(sig)==0 ){ //if not drawn
 
 	if ( (tree_levels.find(sig)==tree_levels.end() ) || ( tree_levels.find(sig)->second<level ) ){
 		tree_levels.erase(sig); //if already exists, and/or level is lower remove and replace with higher level.
 		tree_levels.insert(pair<Tree, int>(sig, level));
+	//	}
+
+        if (isList(sig)) {
+            do {
+                fillOps(hd(sig), level, tree_levels);
+                sig = tl(sig);
+            } while (isList(sig));
+        } else {
+			debug("getting true subsigs",DL4);
+
+            // draw the subsignals
+			n=getTrueSubSigs(sig, subsig);
+
+
 		}
+#if(VHDL_DEBUG>=3)
+					cout<<"		debug3:"<<"sig is "<<sigLabel(sig)<<". subsig.size()="<<subsig.size()<<". n="<<n<<endl;
+#endif
+			//checking if delay
+			if ( isSigFixDelay(sig, atLeft, atRight) ) {
+				debug("sig is fixed delay",DL4);
+				if ( !isSigInt(atLeft, &atDelay) ) {
+					//if first son of FixDelay is an integer, get it in atDelay
+					//else the second son has to be the delay, or we are in big trouble
+					assert( isSigInt( atRight, &atDelay));
+				}
+#if(VHDL_DEBUG>=4)
+				for ( unsigned int i=0; i<subsig.size();i++)
+					cout<< "	debug4:"<<sigLabel(subsig[i])<<" in "<<sigLabel(sig)<<endl<<"		atDelay="<<atDelay<<endl<<"		delay="<<delay<<endl;
+#endif
+				//push parent relationship
+				for (int i=0; i<n; i++) {
+					fillOps(subsig[i], level+1, tree_levels, atDelay);
+				}
+			}
+			//if proj and already recorded associated rec and delay is not null, do nothing
+			else if (!( isProj(sig, &noi, x) && (tree_levels.find(subsig[0])!=tree_levels.end()) && delay )){
+				debug("sig is not fixed delay but will be printed",DL4);
+#if(VHDL_DEBUG>=4)
+				//	cout<<"		debug4:"<<"sig is "<<sigLabel(sig)<<". subsig.size()="<<subsig.size()<<". n="<<n<<endl;
+
+				//for ( unsigned int i=0; i<subsig.size();i++){
+				//	cout<< "	debug4:"<<sigLabel(subsig[i])<<" in "<<sigLabel(sig)<<endl<<"		atDelay="<<atDelay<<endl<<"		delay="<<delay<<endl;
+				//}
+#endif
+				//push parent relationship
+				for (int i=0; i<n; i++) {
+					debug("pushing parent relationship",DL4);
+					fillOps(subsig[i], level+1, tree_levels);
+				}
+			}
+		}
+	debug("Exiting fillOps",DL3);
+
 }
 
 
+static int getTrueSubSigs(Tree sig, vector<Tree>& subsig)
+{
+	int n;
+	n = getSubSignals(sig, subsig);
+	if (n > 0) {
+		if (n==1 && isList(subsig[0])) {
+			Tree id, body;
+			assert(isRec(sig,id,body));
+			if (!isRec(sig,id,body)) {
+			}
+
+			// special recursion case, recreate a vector of subsignals instead of the
+			// list provided by getSubSignal
+
+			Tree L = subsig[0];
+
+			subsig.clear();
+			n = 0;
+			do {
+				subsig.push_back(hd(L));
+				L = tl(L);
+				n += 1;
+			} while (isList(L));
+		}
+	}
+	return n;
+}
 
 /**
  * translate signal binary operations into strings
@@ -268,7 +317,7 @@ static string sigLabel(Tree sig)
 
     else if ( isSigGen(sig, x) ) 					{ fout << "generator"; }
 
-    else if ( isProj(sig, &i, x) )                  { fout << "Proj" << i;	}
+    else if ( isProj(sig, &i, x) )                  { fout << "Proj";	}
     else if ( isRec(sig, var, le) )                 { fout << "REC " << *var; }
 
     else if ( isSigIntCast(sig, x) ) 				{ fout << "int"; }
