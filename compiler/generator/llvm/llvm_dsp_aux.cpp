@@ -627,6 +627,7 @@ bool llvm_dsp_factory::initJIT(string& error_msg)
     fJIT->DisableLazyCompilation(true);
     
     try {
+        /*
         fNew = (newDspFun)LoadOptimize("new_" + fClassName);
         fDelete = (deleteDspFun)LoadOptimize("delete_" + fClassName);
         fGetNumInputs = (getNumInputsFun)LoadOptimize("getNumInputs_" + fClassName);
@@ -635,6 +636,17 @@ bool llvm_dsp_factory::initJIT(string& error_msg)
         fInit = (initFun)LoadOptimize("init_" + fClassName);
         fCompute = (computeFun)LoadOptimize("compute_" + fClassName);
         fMetadata = (metadataFun)LoadOptimize("metadata_" + fClassName);
+        */
+        
+        fNew = (newDspFun)LoadOptimize("new" + fClassName);
+        fDelete = (deleteDspFun)LoadOptimize("delete" + fClassName);
+        fGetNumInputs = (getNumInputsFun)LoadOptimize("getNumInputs" + fClassName);
+        fGetNumOutputs = (getNumOutputsFun)LoadOptimize("getNumOutputs" + fClassName);
+        fBuildUserInterface = (buildUserInterfaceFun)LoadOptimize("buildUserInterface" + fClassName);
+        fInit = (initFun)LoadOptimize("init" + fClassName);
+        fCompute = (computeFun)LoadOptimize("compute" + fClassName);
+        fMetadata = (metadataFun)LoadOptimize("metadata" + fClassName);
+        
         endTiming("initJIT");
         return true;
      } catch (faustexception& e) { // Module does not contain the Faust entry points, or external symbol was not found...
@@ -965,7 +977,7 @@ EXPORT llvm_dsp_factory* createDSPFactoryFromString(const string& name_app, cons
 //    ----- Filtrate Options for file generation ----------      //
     int numberArg = argc;
  
-    for (int i=0; i<argc; i++) {
+    for (int i = 0; i < argc; i++) {
         if (strcmp(argv[i],"-svg") == 0 || 
            strcmp(argv[i],"-ps") == 0 || 
            strcmp(argv[i],"-tg") == 0 || 
@@ -981,7 +993,7 @@ EXPORT llvm_dsp_factory* createDSPFactoryFromString(const string& name_app, cons
     const char** arguments = new const char*[numberArg];
     
     int i = 0;
-    for (int j=0; j<numberArg; j++) {
+    for (int j = 0; j < numberArg; j++) {
         while (strcmp(argv[i],"-svg") == 0 || 
                 strcmp(argv[i],"-ps") == 0 || 
                 strcmp(argv[i],"-tg") == 0 || 
@@ -993,7 +1005,6 @@ EXPORT llvm_dsp_factory* createDSPFactoryFromString(const string& name_app, cons
             i++;
         
         arguments[j] = argv[i];
-
         i++;
     }
     
