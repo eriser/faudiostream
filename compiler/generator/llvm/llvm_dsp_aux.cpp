@@ -141,7 +141,6 @@ static string getParam(int argc, const char* argv[], const string& param, const 
 }
 
 #if defined(LLVM_34) || defined(LLVM_35)
-
 class FaustObjectCache : public ObjectCache {
 
     private:
@@ -169,20 +168,26 @@ class FaustObjectCache : public ObjectCache {
         string getMachineCode() { return fMachineCode; }
         
 };
-
 #endif
 
 void* llvm_dsp_factory::LoadOptimize(const string& function)
 {
 #if defined(LLVM_34) || defined(LLVM_35)
-    return (void*)fJIT->getFunctionAddress(function);
+    void* fun = (void*)fJIT->getFunctionAddress(function);
+    if (fun) {
+        return fun;
+    } else {
+        stringstream error;
+        error << "LoadOptimize failed for '" << function << "'";
+        throw faustexception(error.str());
+    }
 #else
     llvm::Function* fun_ptr = fResult->fModule->getFunction(function);
     if (fun_ptr) {
         return fJIT->getPointerToFunction(fun_ptr);
     } else {
         stringstream error;
-        error << "LoadOptimize : getPointerToFunction failed for " << function;
+        error << "LoadOptimize failed for '" << function << "'";
         throw faustexception(error.str());
     }
 #endif
