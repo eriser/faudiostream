@@ -962,6 +962,18 @@ EXPORT llvm_dsp_factory* createDSPFactoryFromFile(const string& filename,
     } 
 }
 
+static bool isGenFileOption(const char* str)
+{
+    return (strcmp(str,"-svg") == 0 || 
+           strcmp(str,"-ps") == 0 || 
+           strcmp(str,"-tg") == 0 || 
+           strcmp(str,"-sg") == 0 || 
+           strcmp(str,"-mdoc") == 0 || 
+           strcmp(str,"-mdlang") == 0 || 
+           strcmp(str,"-stripdoc") == 0 || 
+           strcmp(str,"-xml") == 0);
+}
+
 EXPORT llvm_dsp_factory* createDSPFactoryFromString(const string& name_app, const string& dsp_content, 
                                                     int argc, const char* argv[], 
                                                     const string& target, 
@@ -970,17 +982,10 @@ EXPORT llvm_dsp_factory* createDSPFactoryFromString(const string& name_app, cons
 
 //    ----- Filtrate Options for file generation ----------      //
     int numberArg = argc;
+    Sllvm_dsp_factory res = 0;
  
     for (int i = 0; i < argc; i++) {
-        if (strcmp(argv[i],"-svg") == 0 || 
-           strcmp(argv[i],"-ps") == 0 || 
-           strcmp(argv[i],"-tg") == 0 || 
-           strcmp(argv[i],"-sg") == 0 || 
-           strcmp(argv[i],"-mdoc") == 0 || 
-           strcmp(argv[i],"-mdlang") == 0 || 
-           strcmp(argv[i],"-stripdoc") == 0 || 
-           strcmp(argv[i],"-xml") == 0)
-            numberArg--;
+        if (isGenFileOption(argv[i])) { numberArg--; }
     }
 
 // New is needed, otherwise it doesn't compile on windows ! 
@@ -988,16 +993,7 @@ EXPORT llvm_dsp_factory* createDSPFactoryFromString(const string& name_app, cons
     
     int i = 0;
     for (int j = 0; j < numberArg; j++) {
-        while (strcmp(argv[i],"-svg") == 0 || 
-                strcmp(argv[i],"-ps") == 0 || 
-                strcmp(argv[i],"-tg") == 0 || 
-                strcmp(argv[i],"-sg") == 0 || 
-                strcmp(argv[i],"-mdoc") == 0 || 
-                strcmp(argv[i],"-mdlang") == 0 || 
-                strcmp(argv[i],"-stripdoc") == 0 || 
-                strcmp(argv[i],"-xml") == 0)
-            i++;
-        
+        while (isGenFileOption(argv[i])) { i++; }
         arguments[j] = argv[i];
         i++;
     }
@@ -1007,8 +1003,7 @@ EXPORT llvm_dsp_factory* createDSPFactoryFromString(const string& name_app, cons
     string sha_key;
     
     if ((expanded_dsp = expandDSPFromString(name_app, dsp_content, numberArg, arguments, sha_key, error_msg)) == "") {
-		delete [] arguments;
-        return 0; 
+		goto result; 
     } else {
 
         FactoryTableIt it;
@@ -1016,18 +1011,18 @@ EXPORT llvm_dsp_factory* createDSPFactoryFromString(const string& name_app, cons
         if (getFactory(sha_key, it)) {
             Sllvm_dsp_factory sfactory = (*it).first;
             sfactory->addReference();
-            
-            delete [] arguments;
-            return sfactory;
+            res = sfactory;
+            goto result; 
         } else if ((factory = CheckDSPFactory(new llvm_dsp_factory(sha_key, numberArg, arguments, name_app, dsp_content, target, error_msg, opt_level), error_msg)) != 0) {
             llvm_dsp_factory::gFactoryTable[factory] = list<llvm_dsp_aux*>();
-            delete [] arguments;
-            return factory;
-        } else {
-			delete [] arguments;
-            return 0;
+            res = factory;
+            goto result;
         }
     }
+    
+result:
+    delete [] arguments;
+    return res;
     
     /*
     string sha_key = generateSHA1(reorganize_compilation_options(argc, argv) + dsp_content);
