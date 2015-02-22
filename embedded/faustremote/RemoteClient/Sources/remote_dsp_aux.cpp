@@ -31,7 +31,7 @@
 FactoryTableType remote_dsp_factory::gFactoryTable;
 
 // Standard Callback to store a server response in stringstream
-static size_t store_Response(void *buf, size_t size, size_t nmemb, void* userp)
+static size_t storeResponse(void *buf, size_t size, size_t nmemb, void* userp)
 {
     std::ostream* os = static_cast<std::ostream*>(userp);
     std::streamsize len = size * nmemb;
@@ -42,7 +42,7 @@ static size_t store_Response(void *buf, size_t size, size_t nmemb, void* userp)
 //The response string stores the data received 
 //(can be error or real data... depending on return value)
 //The errorCode stores the error encoded as INT
-static bool send_request(const string& ip, const string& finalRequest, string& response, int& errorCode)
+static bool sendRequest(const string& ip, const string& finalRequest, string& response, int& errorCode)
 {
     CURL *curl = curl_easy_init();
     bool isInitSuccessfull = false;
@@ -57,7 +57,7 @@ static bool send_request(const string& ip, const string& finalRequest, string& r
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)(finalRequest.size()));
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, finalRequest.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &store_Response);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &storeResponse);
         curl_easy_setopt(curl, CURLOPT_FILE, &oss);
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT ,15); 
         curl_easy_setopt(curl,CURLOPT_TIMEOUT, 15);
@@ -176,7 +176,7 @@ bool remote_dsp_factory::init(int argc, const char *argv[],
         
         string response("");
         int errorCode = -1;
-        if (send_request(ip, finalRequest, response, errorCode)) {
+        if (sendRequest(ip, finalRequest, response, errorCode)) {
             decodeJson(response);
             isInitSuccessfull = true;
         } else if(errorCode != -1) {
@@ -204,7 +204,7 @@ void remote_dsp_factory::stop(){
     
     string response;
     int errorCode;
-    if (!send_request(ip, finalRequest, response, errorCode)) {
+    if (!sendRequest(ip, finalRequest, response, errorCode)) {
         printf("curl_easy_perform() failed: %s || code %i\n", response.c_str(), errorCode);
     }
 }
@@ -307,7 +307,7 @@ EXPORT remote_dsp_factory* getRemoteDSPFactoryFromSHAKey(const string& ip_server
         string response("");
         int errorCode = -1;
         
-        if (send_request(serverIP, finalRequest, response, errorCode)){
+        if (sendRequest(serverIP, finalRequest, response, errorCode)){
             factory->decodeJson(response);
             remote_dsp_factory::gFactoryTable[factory] = make_pair(sha_key, list<remote_dsp_aux*>());
             return factory;
@@ -361,9 +361,9 @@ EXPORT remote_dsp_factory* createRemoteDSPFactoryFromString(const string& name_a
     
     bool factoryStillExisting = false;
     
-    for (int i=0; i<factories_list.size(); i++) {
-        if(sha_key == factories_list[i].second.c_str()){
-           factoryStillExisting = true;
+    for (int i = 0; i < factories_list.size(); i++) {
+        if (sha_key == factories_list[i].second.c_str()){
+            factoryStillExisting = true;
             break;
         }
     }
@@ -434,7 +434,7 @@ EXPORT void deleteRemoteDSPFactory(remote_dsp_factory* factory)
 //    
 //    string response;
 //    int errorCode;
-//    if(send_request("http://192.168.1.174:7777/DeleteFactory", finalRequest, response, errorCode))
+//    if(sendRequest("http://192.168.1.174:7777/DeleteFactory", finalRequest, response, errorCode))
 //        printf("Factory Well Well deleted\n");
 }
 
@@ -553,52 +553,52 @@ void remote_dsp_aux::buildUserInterface(UI* ui){
             fInControl[counterIn] = init;
             isInItem = true;
             
-            for(it2 = (*it)->meta.begin(); it2 != (*it)->meta.end(); it2++)
+            for (it2 = (*it)->meta.begin(); it2 != (*it)->meta.end(); it2++)
                 ui->declare(&fInControl[counterIn], it2->first.c_str(), it2->second.c_str());
         }
 //        Meta Data declaration for exit items
-        else if((*it)->type.find("bargraph") != string::npos){
+        else if ((*it)->type.find("bargraph") != string::npos){
             
             fOutControl[counterOut] = init;
             isOutItem = true;
             
-            for(it2 = (*it)->meta.begin(); it2 != (*it)->meta.end(); it2++){
+            for (it2 = (*it)->meta.begin(); it2 != (*it)->meta.end(); it2++){
                 ui->declare(&fOutControl[counterOut], it2->first.c_str(), it2->second.c_str());
             }
         }
 //      Meta Data declaration for group opening or closing
         else {
-            for(it2 = (*it)->meta.begin(); it2 != (*it)->meta.end(); it2++)
+            for (it2 = (*it)->meta.begin(); it2 != (*it)->meta.end(); it2++)
                 ui->declare(0, it2->first.c_str(), it2->second.c_str());
         }
         
 //      Item declaration
-        if((*it)->type.compare("hgroup") == 0)
+        if ((*it)->type.compare("hgroup") == 0)
             ui->openHorizontalBox((*it)->label.c_str());
         
-        else if((*it)->type.compare("vgroup") == 0){
+        else if ((*it)->type.compare("vgroup") == 0){
             printf("GROUP NAME = %s\n", (*it)->label.c_str());
             ui->openVerticalBox((*it)->label.c_str());
         }
-        else if((*it)->type.compare("tgroup") == 0)
+        else if ((*it)->type.compare("tgroup") == 0)
             ui->openTabBox((*it)->label.c_str());
         
-        else if((*it)->type.compare("vslider") == 0)
+        else if ((*it)->type.compare("vslider") == 0)
             ui->addVerticalSlider((*it)->label.c_str(), &fInControl[counterIn], init, min, max, step);
         
-        else if((*it)->type.compare("hslider") == 0)
+        else if ((*it)->type.compare("hslider") == 0)
             ui->addHorizontalSlider((*it)->label.c_str(), &fInControl[counterIn], init, min, max, step);            
         
-        else if((*it)->type.compare("checkbox") == 0)
+        else if ((*it)->type.compare("checkbox") == 0)
             ui->addCheckButton((*it)->label.c_str(), &fInControl[counterIn]);
         
-        else if((*it)->type.compare("hbargraph") == 0)
+        else if ((*it)->type.compare("hbargraph") == 0)
             ui->addHorizontalBargraph((*it)->label.c_str(), &fOutControl[counterOut], min, max);
         
-        else if((*it)->type.compare("vbargraph") == 0)
+        else if ((*it)->type.compare("vbargraph") == 0)
             ui->addVerticalBargraph((*it)->label.c_str(), &fOutControl[counterOut], min, max);
         
-        else if((*it)->type.compare("nentry") == 0)
+        else if ((*it)->type.compare("nentry") == 0)
             ui->addNumEntry((*it)->label.c_str(), &fInControl[counterIn], init, min, max, step);
         
         else if((*it)->type.compare("button") == 0)
@@ -607,9 +607,10 @@ void remote_dsp_aux::buildUserInterface(UI* ui){
         else if((*it)->type.compare("close") == 0)
             ui->closeBox();
             
-        if(isInItem)
+        if (isInItem)
             counterIn++;
-        if(isOutItem)
+            
+        if (isOutItem)
             counterOut++;
     }
     
@@ -622,21 +623,20 @@ void remote_dsp_aux::buildUserInterface(UI* ui){
 
 void remote_dsp_aux::setupBuffers(FAUSTFLOAT** input, FAUSTFLOAT** output, int offset)
 {
-    for(int j=0; j<getNumInputs(); j++) {
+    for (int j = 0; j < getNumInputs(); j++) {
         fAudioInputs[j] = &input[j][offset];
     }
     
-    for(int j=0; j<getNumOutputs(); j++) {
+    for (int j = 0; j < getNumOutputs(); j++) {
         fAudioOutputs[j] = &output[j][offset];
     }
 }
 
 void remote_dsp_aux::sendSlice(int buffer_size) 
 {
-    if (fRunningFlag && jack_net_master_send_slice(fNetJack, getNumInputs(), fAudioInputs, 1, (void**)fControlInputs, buffer_size) < 0){
+    if (fRunningFlag && jack_net_master_send_slice(fNetJack, getNumInputs(), fAudioInputs, 1, (void**)fControlInputs, buffer_size) < 0) {
         fillBufferWithZerosOffset(getNumOutputs(), 0, buffer_size, fAudioOutputs);
         if (fErrorCallback) {
-            
             printf("Is sent OK ?\n");
             fRunningFlag = (fErrorCallback(WRITE_ERROR, fErrorCallbackArg) == 0);
         }
@@ -782,10 +782,11 @@ bool remote_dsp_aux::init(int argc, const char *argv[],
     int errorCode = -1;
 
 // OPEN NET JACK CONNECTION
-    if(send_request(ip, finalRequest, response, errorCode)){
+    if (sendRequest(ip, finalRequest, response, errorCode)) {
         printf("BS & SR = %i | %i\n", buffer_size, sampling_rate);
         
-        jack_master_t request = { -1, -1, -1, -1, static_cast<jack_nframes_t>(buffer_size), static_cast<jack_nframes_t>(sampling_rate), "test_master", 5, partial_cycle};
+        jack_master_t request 
+            = { -1, -1, -1, -1, static_cast<jack_nframes_t>(buffer_size), static_cast<jack_nframes_t>(sampling_rate), "test_master", 5, partial_cycle};
         jack_slave_t result;
         fNetJack = jack_net_master_open(DEFAULT_MULTICAST_IP, atoi(port), "net_master", &request, &result); 
         
@@ -818,12 +819,12 @@ void remote_dsp_aux::stopAudio()
     
     string response("");
     int errorCode;
-    send_request(ip, finalRequest, response, errorCode);
+    sendRequest(ip, finalRequest, response, errorCode);
 }
 
 void remote_dsp_aux::startAudio()
 {
-   string finalRequest = "instanceKey=";
+    string finalRequest = "instanceKey=";
     
     stringstream s;
     s << this;
@@ -837,7 +838,7 @@ void remote_dsp_aux::startAudio()
     
     string response("");
     int errorCode;
-    send_request(ip, finalRequest, response, errorCode);
+    sendRequest(ip, finalRequest, response, errorCode);
 }
 
 //----------------------------------REMOTE DSP API-------------------------------------------
@@ -938,7 +939,7 @@ remote_DNS::remote_DNS()
     /* make address for multicast ip
      * pick a port number for you by passing NULL as the last argument */
     
-    //    lo_address t = lo_address_new("224.0.0.1", "7770");
+    // lo_address t = lo_address_new("224.0.0.1", "7770");
     // lo_server multi = lo_server_new_multicast("drone", "7771", error);
     /* start a new server on port 7770 */
     fLoThread = lo_server_thread_new_multicast("224.0.0.1", "7770", remote_DNS::errorHandler);
@@ -996,7 +997,7 @@ EXPORT bool getRemoteMachinesAvailable(map<string, pair<string, int> >* machineL
 {
     if (gDNS && gDNS->fLocker.Lock()) {
         
-        for(map<string, member>::iterator it=gDNS->fClients.begin(); it != gDNS->fClients.end(); it++){
+        for (map<string, member>::iterator it=gDNS->fClients.begin(); it != gDNS->fClients.end(); it++) {
             
             member iterMem = it->second;
             
@@ -1004,7 +1005,7 @@ EXPORT bool getRemoteMachinesAvailable(map<string, pair<string, int> >* machineL
             lo_timetag_now(&now);
             
 //            If the server machine did not send a message for 3 secondes, it is considered disconnected
-            if((now.sec - iterMem.timetag.sec) < 3){
+            if ((now.sec - iterMem.timetag.sec) < 3) {
                 
 //        Decompose HostName to have Name, Ip and Port of service
                 string serviceNameCpy(iterMem.hostname);
@@ -1021,7 +1022,6 @@ EXPORT bool getRemoteMachinesAvailable(map<string, pair<string, int> >* machineL
                 string port = serviceIP.substr(pos2+1, string::npos);
                 
                 (*machineList)[hostName] = make_pair(ipAddr, atoi(port.c_str()));
-                
             }
         }
         
@@ -1056,14 +1056,14 @@ EXPORT bool getRemoteFactoriesAvailable(const string& ip_server, int port_server
         ostringstream oss;
             
         curl_easy_setopt(curl, CURLOPT_URL, finalIP.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &store_Response);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &storeResponse);
         curl_easy_setopt(curl, CURLOPT_FILE, &oss);
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT ,15); 
-        curl_easy_setopt(curl,CURLOPT_TIMEOUT, 15);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15);
             
         CURLcode res = curl_easy_perform(curl);
             
-        if(res == CURLE_OK){
+        if (res == CURLE_OK) {
             
             printf("remoteDSP::getRemoteFactoriesAvailable 1\n");    
             
@@ -1071,7 +1071,7 @@ EXPORT bool getRemoteFactoriesAvailable(const string& ip_server, int port_server
             
             curl_easy_getinfo(curl,CURLINFO_RESPONSE_CODE, &respcode);
             
-            if(respcode == 200){
+            if (respcode == 200) {
  
                 // PARSE RESPONSE TO EXTRACT KEY/VALUE
                 

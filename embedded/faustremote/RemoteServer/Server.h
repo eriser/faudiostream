@@ -130,94 +130,101 @@ string searchIP();
 //
 struct slave_dsp {
     
-    string          fInstanceKey;
-    string          fName;
+    string fInstanceKey;
+    string fName;
     
     //    NETJACK PARAMETERS
-    string          fIP;
-    string          fPort;
-    string          fCV;
-    string          fMTU;
-    string          fLatency;
+    string fIP;
+    string fPort;
+    string fCV;
+    string fMTU;
+    string fLatency;
     
-    server_netjackaudio*   fAudio; //NETJACK SLAVE 
-    llvm_dsp*              fDSP;   //Real DSP Instance 
-    
-//  llvm_dsp_factory*     fSlaveFactory;   //RelatedFactory
+    server_netjackaudio* fAudio;    //NETJACK SLAVE 
+    llvm_dsp* fDSP;                 //Real DSP Instance 
     
     //To be sure not access the same resources at the same time, the mutex of the server has to be accessible here
     //So that the server himself is kept
-    Server*         fServer;
+    Server* fServer;
     
     slave_dsp(llvm_dsp_factory* smartFactory, const string& compression, const string& ip, const string& port, const string& mtu, const string& latency, Server* server);
     ~slave_dsp();
     
-    bool start_audio();
-    void stop_audio();
+    bool startAudioConnection();
+    bool startAudio();
+    void stopAudio();
     
-    string  key(){return fInstanceKey;}
-    void    setKey(const string& key){fInstanceKey = key;}
-    string name(){return fName;}
-    void    setName(string name){fName = name;}
+    string  key(){ return fInstanceKey; }
+    void    setKey(const string& key){ fInstanceKey = key; }
+    string  name(){ return fName; }
+    void    setName(string name){ fName = name; }
 };
     
 // Same Prototype LLVM/REMOTE dsp are using for allocation/desallocation
-slave_dsp* createSlaveDSPInstance(llvm_dsp_factory* smartFactory, const string& compression, const string& ip, const string& port, const string& mtu, const string& latency, Server* server);
+slave_dsp* createSlaveDSPInstance(llvm_dsp_factory* smartFactory, 
+                                const string& compression, 
+                                const string& ip, 
+                                const string& port, 
+                                const string& mtu, 
+                                const string& latency, 
+                                Server* server);
 void deleteSlaveDSPInstance(slave_dsp* smartPtr);
     
 class Server {
+
+friend struct slave_dsp;
         
 private:
 
-    pthread_t       fThread;
-    TMutex          fLocker;
-    int             fPort;
+    pthread_t fThread;
+    TMutex fLocker;
+    int fPort;
     
     // Factories that can be instanciated. 
     // The remote client asking for a new DSP Instance has to send an index corresponding to an existing factory
     // SHAKey, pair<NameApp, Factory>
     map<string, pair<string, llvm_dsp_factory*> > fAvailableFactories;
         
-// List of Dsp Currently Running. Use to keep track of Audio that would have lost their connection
+    // List of Dsp Currently Running. Use to keep track of Audio that would have lost their connection
     list<slave_dsp*> fRunningDsp;
     struct MHD_Daemon* fDaemon; //Running http daemon
 
-public :
+public:
         
     Server();
     ~Server();
         
 //  Start server on specified port 
-    bool            start(int port = 7777);
-    void            stop();
+    bool start(int port = 7777);
+    void stop();
         
 // Callback of another thread to wait netjack audio connection without blocking the server
-    static void*    start_audioSlave(void *);
+    static void* startAudioSlave(void *);
             
 // Creates the html to send back
-    int             send_page(MHD_Connection *connection, const char *page, int length, int status_code, const char * type = 0);
+    int          sendPage(MHD_Connection *connection, const char *page, int length, int status_code, const char * type = 0);
         
-    void            stop_NotActive_DSP();
+    void         stopNotActiveDSP();
         
-    connection_info_struct* allocate_connection_struct(MHD_Connection *connection, const char *method);
+    connection_info_struct* allocateConnectionStruct(MHD_Connection *connection, const char *method);
         
 // Reaction to any kind of connection to the Server
-    static int      answer_to_connection(void *cls, MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls);
+    static int   answerToConnection(void *cls, MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls);
         
         
 // Reaction to a GET request
-    int             answer_get(MHD_Connection* connection, const char* url);
+    int          answerGet(MHD_Connection* connection, const char* url);
         
 // Reaction to a POST request
-    int             answer_post(MHD_Connection *connection, const char *url, const char *upload_data, size_t *upload_data_size, void **con_cls);
+    int          answerPost(MHD_Connection *connection, const char *url, const char *upload_data, size_t *upload_data_size, void **con_cls);
         
 // Callback that processes the data send to the server
-    static int iterate_post(void *coninfo_cls, MHD_ValueKind kind, const char *key, const char *filename, const char *content_type, const char *transfer_encoding, const char *data, uint64_t off, size_t size);
+    static int iteratePost(void *coninfo_cls, MHD_ValueKind kind, const char *key, const char *filename, const char *content_type, const char *transfer_encoding, const char *data, uint64_t off, size_t size);
         
-    static void request_completed(void *cls, MHD_Connection *connection, void **con_cls, MHD_RequestTerminationCode toe);
+    static void  requestCompleted(void *cls, MHD_Connection *connection, void **con_cls, MHD_RequestTerminationCode toe);
         
 // Reaction to a /GetJson request --> Creates llvm_dsp_factory & json interface
-    bool        compile_Data(connection_info_struct* con_info);
+    bool        compileData(connection_info_struct* con_info);
 // Reaction to a /GetJsonFromKey --> GetJson form available factory
     bool        getJsonFromKey(connection_info_struct* con_info);
         
@@ -230,6 +237,7 @@ public :
     
 // Register Service as Available
     static void* registration(void* arg);
+    
 };
     
 #endif
